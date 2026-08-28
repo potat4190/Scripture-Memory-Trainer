@@ -19,10 +19,11 @@ from datetime import timedelta
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlmodel import Session, func, select
 
-from .database import get_session
+from .database import ROOT, get_session
 from .queue import DAILY_CAP, build_queue
 from .schemas import (
     EXPORT_FORMAT,
@@ -262,3 +263,12 @@ def import_endpoint(session: SessionDep, body: ImportIn) -> ImportOut:
         },
     )
     return ImportOut.model_validate(counts)
+
+
+# The frontend is served by the same app, from the same origin. That is not a
+# convenience: a separate static host would need CORS, credentials on every
+# fetch, and a second thing to deploy. Mounted last so every /api route and
+# /docs is matched first.
+WEB_ROOT = ROOT / "web"
+if WEB_ROOT.is_dir():
+    app.mount("/", StaticFiles(directory=WEB_ROOT, html=True), name="web")

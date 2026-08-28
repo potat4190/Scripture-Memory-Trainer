@@ -544,3 +544,23 @@ def test_import_refuses_a_newer_export_version(seeded: TestClient) -> None:
     )
     assert response.status_code == 422
     assert "newer than this build" in response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# The frontend is served by the same app (Phase 4)
+# ---------------------------------------------------------------------------
+
+
+def test_the_frontend_is_served_from_the_same_origin(client: TestClient) -> None:
+    """Same origin means no CORS, no credentials plumbing, and one thing to deploy."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Scripture Memory Trainer" in response.text
+
+
+def test_the_static_mount_does_not_shadow_the_api(client: TestClient) -> None:
+    """Mounting at / is only safe because every real route is matched first."""
+    assert client.get("/api/health").status_code == 200
+    assert client.get("/docs").status_code == 200
+    assert client.get("/openapi.json").status_code == 200

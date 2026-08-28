@@ -351,6 +351,59 @@ every intermediate box, interval and due date.
 
 ---
 
+# Phase 4 — Frontend
+
+## D19 — Two things are duplicated in the browser, and both are pinned by tests
+
+- **Status:** Decided
+- **Context:** `web/index.html` is one static file with no build step, so it
+  cannot import from `src/`. Two pieces of backend logic have to exist there
+  as well:
+  1. **The Leitner intervals.** A grade button has to say *"Good — tomorrow,
+     Aug 29"* before it is pressed, which means computing the next due date
+     client-side. Asking the server for four hypothetical futures on every card
+     would be four round trips to render a button row.
+  2. **The unit split.** The verdict reports mismatches as positions — "wrong at
+     15" — and the page has to highlight the fifteenth *unit* of the verse. That
+     means splitting the text the same way the server did.
+- **Decision:** duplicate both, and make the duplication impossible to break
+  silently. `tests/test_web_contract.py` parses `web/index.html` and fails if
+  the JavaScript `INTERVALS`, `MAX_BOX` or cap disagree with `scheduler.py` and
+  `queue.py`.
+- **Why the split is safe to simplify:** the client strips punctuation and
+  collapses whitespace but skips the language-specific folding (harakat, nukta,
+  alef forms, case), because none of those rules change *how many* units there
+  are — they only change what the units contain. That invariant is asserted for
+  all 32 cards, both directly and by comparing the client and server splits card
+  by card. Add a card that breaks it and the suite says so.
+
+## D20 — The frontend is served by the API, from the same origin
+
+- **Status:** Decided
+- **Context:** A static page and an API can be deployed separately or together.
+- **Decision:** FastAPI mounts `web/` at `/`, after every real route, so `/api/*`
+  and `/docs` still match first (a test asserts the mount does not shadow them).
+- **Why:** a separate static host would need CORS, credentials on every fetch,
+  and a second deploy target. Same origin removes all three, and Phase 6 has one
+  thing to ship instead of two.
+
+## D21 — Offline is a read of the local mirror, not a write queue
+
+- **Status:** Decided (revisit in Phase 5)
+- **Context:** Phase 4 asks for Dexie mirroring the backend tables; Phase 5 is
+  where sync actually lands.
+- **Decision:** every load hydrates Dexie from `GET /api/export` — one request
+  that returns exactly the four tables. When the network is up the server is the
+  source of truth for the queue; when it is down the page rebuilds the queue
+  from the mirror using the same rules and says so in a banner. Grades are not
+  queued for later: the banner states plainly that they will not be saved until
+  the connection is back, rather than accepting work it might lose.
+- **Also:** a blocked CDN must not blank the page. Dexie backs only the mirror,
+  so when it fails to load the app falls back to an in-memory stand-in with the
+  same small surface and keeps working online.
+
+---
+
 ## Open
 
 - **O1 — `again`-requeued card vs. the daily cap of 20.** `FLOWCHART.md` diagram

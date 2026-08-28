@@ -132,28 +132,36 @@ the clock offset (D17).
 
 ## Phase 4 — Frontend
 
-- [ ] `index.html` with Alpine.js and Dexie from CDN
-- [ ] Google Fonts: Noto Sans, Noto Naskh Arabic, Noto Sans Devanagari, Noto Sans SC
-- [ ] Dexie schema mirroring the backend tables
-- [ ] Home: due counts per box, current app date, streak
-- [ ] **Clock control in the header** — +1 / +7 / +30 days, jump to date, reset
-- [ ] Review card: prompt, typed input, submit
-- [ ] `dir` and `lang` set **per element** from `card.direction` and `card.language`
-- [ ] CSS logical properties throughout — `margin-inline-start`, `text-align: start`, never `left`/`right`
-- [ ] Verdict display: green / amber / red, mismatch positions highlighted inline
-- [ ] Grade buttons showing the resulting next-due date on each
-- [ ] Cards graded `again` re-enter today's queue
-- [ ] Session summary screen
-- [ ] Export and import buttons, reachable without an account
-- [ ] Test with browser zoom at 200% and on a phone-width viewport
+- [x] `index.html` with Alpine.js and Dexie from CDN
+- [x] Google Fonts: Noto Sans, Noto Naskh Arabic, Noto Sans Devanagari, Noto Sans SC
+- [x] Dexie schema mirroring the backend tables
+- [x] Home: due counts per box, current app date, streak
+- [x] **Clock control in the header** — +1 / +7 / +30 days, jump to date, reset
+- [x] Review card: prompt, typed input, submit
+- [x] `dir` and `lang` set **per element** from `card.direction` and `card.language`
+- [x] CSS logical properties throughout — `margin-inline-start`, `text-align: start`, never `left`/`right`
+- [x] Verdict display: green / amber / red, mismatch positions highlighted inline
+- [x] Grade buttons showing the resulting next-due date on each
+- [x] Cards graded `again` re-enter today's queue
+- [x] Session summary screen
+- [x] Export and import buttons, reachable without an account
+- [x] Test with browser zoom at 200% and on a phone-width viewport
 
 ### Multi-script visual QA
 
-- [ ] Arabic renders right-to-left with harakat stacked correctly, not as tofu boxes
-- [ ] Hindi conjuncts render as ligatures, not decomposed
-- [ ] Chinese renders at a readable size — CJK needs more line-height than Latin
-- [ ] The typed input for an RTL card has the cursor on the right
-- [ ] Mixed-direction card list does not visually break
+- [x] Arabic renders right-to-left with harakat stacked correctly, not as tofu boxes
+- [x] Hindi conjuncts render as ligatures, not decomposed
+- [x] Chinese renders at a readable size — CJK needs more line-height than Latin
+- [x] The typed input for an RTL card has the cursor on the right
+- [x] Mixed-direction card list does not visually break
+
+**Where this stands:** complete. One static file, no build step, served by the
+API itself at `/`. Verified in a real browser at 1280px, 640px at 200% zoom and
+375px: no horizontal scroll anywhere, every control at least 44x44, contrast at
+or above 4.5:1 in both light and dark themes, and all four scripts rendering
+correctly — Arabic right-to-left with harakat stacked, Devanagari conjuncts
+ligated, Chinese split per character. `tests/test_web_contract.py` pins the
+parts of the page a backend change could break.
 
 **Exit criterion:** you can complete a full study session in all four languages without touching `/docs`.
 

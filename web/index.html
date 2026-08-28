@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scripture Memory Trainer</title>
+<meta name="description" content="Leitner spaced repetition for scripture in English, Chinese, Arabic and Hindi.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@400;500&family=Noto+Naskh+Arabic:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ---------------------------------------------------------------------------
+   Scripture Memory Trainer
+
+   Direction: a reading desk at dusk. A cool eucalyptus ground, a paper-white
+   card floating on it, and one saturated verdigris accent. The verse is the
+   largest thing on the page in every script; the interface speaks in the same
+   Noto family that renders the scripture, so nothing competes with it.
+
+   The signature element is the box rail: six physical slots, 0-5, holding the
+   cards. Grading moves a card between slots and the rail animates it. The
+   numbering is real -- a Leitner box IS a sequence -- so numbered markers earn
+   their place here.
+
+   Every inline direction is a logical property: margin-inline, padding-inline,
+   text-align: start, inset-inline. Nothing says left or right, because half
+   these verses run the other way.
+--------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light dark;
+
+  --ground: #dfe5e2;
+  --ground-deep: #cdd6d2;
+  --surface: #fcfcfa;
+  --surface-sunk: #f1f2ee;
+  --ink: #17232b;
+  --ink-soft: #4a5b63;
+  --ink-faint: #53646a;   /* 4.5:1 on the tinted grounds too; audited, do not lighten */
+  --rule: #c3cec9;
+
+  --accent: #1a6b58;
+  --accent-soft: #d7e8e1;
+  --accent-ink: #0f3d31;
+
+  --correct: #1a6b58;
+  --correct-soft: #d7e8e1;
+  --partial: #92590f;
+  --partial-soft: #f6e6c8;
+  --wrong: #9c3327;
+  --wrong-soft: #f6dcd7;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --radius: 4px;
+  --radius-lg: 10px;
+  --rail-shadow: 0 1px 0 var(--rule);
+  --lift: 0 1px 2px rgb(23 35 43 / 0.06), 0 8px 24px -12px rgb(23 35 43 / 0.25);
+
+  --ui: "Noto Sans", system-ui, sans-serif;
+  --display: "Instrument Serif", "Noto Serif", Georgia, serif;
+  --data: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #101a20;
+    --ground-deep: #0a1116;
+    --surface: #18242b;
+    --surface-sunk: #141e24;
+    --ink: #e8eeeb;
+    --ink-soft: #a9b9bd;
+    --ink-faint: #95a7ad;   /* 4.5:1 on the dark --surface */
+    --rule: #2c3c44;
+
+    --accent: #63c3a8;
+    --accent-soft: #17322b;
+    --accent-ink: #a5ddcb;
+
+    --correct: #63c3a8;
+    --correct-soft: #17322b;
+    --partial: #e0b263;
+    --partial-soft: #3a2d13;
+    --wrong: #e08d80;
+    --wrong-soft: #3a1e1a;
+
+    --lift: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -16px rgb(0 0 0 / 0.7);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 1rem;
+  line-height: 1.55;
+  min-height: 100dvh;
+}
+
+[x-cloak] { display: none !important; }
+
+h1, h2, h3 { font-weight: 600; line-height: 1.2; margin: 0; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+:where(a, button, input, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute; inset-block-start: -100%; inset-inline-start: var(--space-4);
+  background: var(--surface); color: var(--ink);
+  padding: var(--space-3) var(--space-4); z-index: 100;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.skip-link:focus { inset-block-start: 0; }
+
+.shell {
+  max-inline-size: 60rem;
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+  padding-block-end: var(--space-7);
+}
+
+/* --- header + clock ------------------------------------------------------ */
+
+.masthead {
+  position: sticky; inset-block-start: 0; z-index: 20;
+  background: color-mix(in srgb, var(--ground) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-block-end: 1px solid var(--rule);
+}
+
+.masthead__inner {
+  max-inline-size: 60rem; margin-inline: auto;
+  padding: var(--space-3) var(--space-4);
+  display: flex; flex-wrap: wrap; gap: var(--space-3);
+  align-items: center; justify-content: space-between;
+}
+
+.wordmark {
+  font-family: var(--display);
+  font-size: 1.5rem; font-weight: 400; letter-spacing: 0.01em;
+  line-height: 1.2; margin: 0;
+  display: flex; align-items: baseline; gap: var(--space-2);
+}
+.wordmark em { font-style: italic; color: var(--accent); }
+
+.clock {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+}
+
+.clock__date {
+  font-family: var(--data); font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  padding-inline-end: var(--space-2);
+  border-inline-end: 1px solid var(--rule);
+  margin-inline-end: var(--space-1);
+  white-space: nowrap;
+}
+.clock__date small { display: block; color: var(--ink-faint); font-size: 0.6875rem; }
+.clock__date[data-travelled="true"] { color: var(--accent); font-weight: 500; }
+
+.btn {
+  min-block-size: 44px; min-inline-size: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--surface); color: var(--ink);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.btn:hover:not(:disabled) { background: var(--surface-sunk); border-color: var(--ink-faint); }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn--quiet { background: transparent; border-color: transparent; color: var(--ink-soft); }
+.btn--quiet:hover:not(:disabled) { background: var(--surface); color: var(--ink); }
+
+.btn--primary {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+  font-weight: 600;
+}
+@media (prefers-color-scheme: dark) { .btn--primary { color: #08201a; } }
+.btn--primary:hover:not(:disabled) { background: var(--accent-ink); border-color: var(--accent-ink); }
+@media (prefers-color-scheme: dark) {
+  .btn--primary:hover:not(:disabled) { background: var(--accent-ink); color: #08201a; }
+}
+
+.btn--step { font-family: var(--data); font-size: 0.8125rem; padding-inline: var(--space-2); }
+
+/* --- box rail: the signature --------------------------------------------- */
+
+.rail {
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-1);
+  margin-block: var(--space-5);
+  border: 1px solid var(--rule); border-radius: var(--radius-lg);
+  background: var(--surface-sunk); padding: var(--space-2);
+}
+
+.slot {
+  text-align: center; padding: var(--space-3) var(--space-1);
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid transparent;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+.slot[data-active="true"] { border-color: var(--accent); background: var(--accent-soft); }
+
+.slot__n {
+  font-family: var(--data); font-size: 0.75rem; letter-spacing: 0.08em;
+  color: var(--ink-faint); text-transform: uppercase;
+}
+.slot__count {
+  font-family: var(--display); font-size: 1.75rem; line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.slot__interval { font-family: var(--data); font-size: 0.75rem; color: var(--ink-faint); }
+
+/* --- cards and panels ---------------------------------------------------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--lift);
+}
+
+.panel + .panel { margin-block-start: var(--space-4); }
+
+.eyebrow {
+  font-family: var(--data); font-size: 0.75rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+
+.stat-row { display: flex; flex-wrap: wrap; gap: var(--space-6); margin-block-start: var(--space-4); }
+.stat__value { font-family: var(--display); font-size: 2.75rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat__label { color: var(--ink-soft); font-size: 0.875rem; }
+
+/* --- the verse ----------------------------------------------------------- */
+
+.verse {
+  margin-block: var(--space-5);
+  text-align: start;
+  font-size: 1.375rem;
+  line-height: 1.8;
+  color: var(--ink);
+}
+.verse[lang="en"] { font-family: "Noto Serif", Georgia, serif; }
+.verse[lang="ar"] { font-family: "Noto Naskh Arabic", serif; font-size: 1.75rem; line-height: 2.1; }
+.verse[lang="hi"] { font-family: "Noto Sans Devanagari", sans-serif; line-height: 1.95; }
+.verse[lang="zh"] { font-family: "Noto Sans SC", sans-serif; font-size: 1.5rem; line-height: 2; letter-spacing: 0.02em; }
+
+.answer {
+  inline-size: 100%;
+  min-block-size: 8rem;
+  padding: var(--space-4);
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--surface-sunk); color: var(--ink);
+  text-align: start;
+  resize: vertical;
+  font-size: 1.125rem; line-height: 1.7;
+}
+.answer[lang="ar"] { font-family: "Noto Naskh Arabic", serif; font-size: 1.375rem; line-height: 2; }
+.answer[lang="hi"] { font-family: "Noto Sans Devanagari", sans-serif; }
+.answer[lang="zh"] { font-family: "Noto Sans SC", sans-serif; }
+
+.field-label { display: block; font-weight: 500; margin-block-end: var(--space-2); }
+.field-help { color: var(--ink-soft); font-size: 0.875rem; margin-block-start: var(--space-2); }
+
+/* --- verdict ------------------------------------------------------------- */
+
+.verdict {
+  margin-block-start: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  border-inline-start: 4px solid var(--rule);
+  background: var(--surface-sunk);
+}
+.verdict[data-status="correct"]   { border-inline-start-color: var(--correct); background: var(--correct-soft); }
+.verdict[data-status="partial"]   { border-inline-start-color: var(--partial); background: var(--partial-soft); }
+.verdict[data-status="incorrect"] { border-inline-start-color: var(--wrong);   background: var(--wrong-soft); }
+
+.verdict__head { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; }
+.verdict__count { font-family: var(--data); font-variant-numeric: tabular-nums; color: var(--ink-soft); font-weight: 400; }
+
+.marked {
+  margin-block-start: var(--space-3); line-height: 2.2; text-align: start;
+  overflow-wrap: anywhere;
+}
+/* Word languages need a space between units; zh is split per character and
+   must not gain any. */
+.marked:not([lang="zh"]) .unit + .unit::before { content: " "; }
+.marked[lang="ar"] { font-family: "Noto Naskh Arabic", serif; font-size: 1.375rem; }
+.marked[lang="hi"] { font-family: "Noto Sans Devanagari", sans-serif; }
+.marked[lang="zh"] { font-family: "Noto Sans SC", sans-serif; }
+.marked[lang="en"] { font-family: "Noto Serif", Georgia, serif; }
+
+.unit { padding-inline: 2px; border-radius: 2px; }
+.unit--ok { color: var(--ink-soft); }
+.unit--bad {
+  background: var(--wrong-soft); color: var(--wrong);
+  text-decoration: underline wavy var(--wrong) 1px; text-underline-offset: 4px;
+  font-weight: 600;
+}
+.unit--missing { background: var(--partial-soft); color: var(--partial); font-weight: 600; }
+.unit--extra { color: var(--ink-faint); text-decoration: line-through; }
+
+.unit__pos {
+  font-family: var(--data); font-size: 0.625rem; vertical-align: super;
+  opacity: 0.8; padding-inline-start: 1px;
+}
+
+/* --- grades -------------------------------------------------------------- */
+
+.grades {
+  display: grid; gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  margin-block-start: var(--space-5);
+}
+
+.grade {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-block-size: 60px; padding: var(--space-3) var(--space-2);
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--surface); cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.grade:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.grade:active:not(:disabled) { transform: scale(0.98); }
+.grade__name { font-weight: 600; }
+.grade__when { font-family: var(--data); font-size: 0.75rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.grade--again .grade__name { color: var(--wrong); }
+.grade--easy .grade__name { color: var(--correct); }
+
+/* --- misc ---------------------------------------------------------------- */
+
+.banner {
+  display: flex; gap: var(--space-3); align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--partial); border-radius: var(--radius);
+  background: var(--partial-soft); color: var(--partial);
+  margin-block: var(--space-4); font-size: 0.9375rem;
+}
+
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.spacer { flex: 1 1 auto; }
+
+.meta {
+  display: flex; flex-wrap: wrap; gap: var(--space-3);
+  font-family: var(--data); font-size: 0.8125rem; color: var(--ink-faint);
+}
+
+.progress {
+  block-size: 3px; background: var(--rule); border-radius: 2px; overflow: hidden;
+  margin-block-start: var(--space-4);
+}
+.progress__fill { block-size: 100%; background: var(--accent); transition: inline-size 320ms ease; }
+
+table.summary { inline-size: 100%; border-collapse: collapse; margin-block-start: var(--space-4); }
+table.summary th, table.summary td {
+  text-align: start; padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--rule); font-size: 0.9375rem;
+}
+table.summary th { font-family: var(--data); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 500; }
+table.summary td.num { font-family: var(--data); font-variant-numeric: tabular-nums; }
+
+.empty { text-align: center; padding-block: var(--space-7); color: var(--ink-soft); }
+.empty__title { font-family: var(--display); font-size: 1.75rem; color: var(--ink); }
+
+dialog {
+  border: 1px solid var(--rule); border-radius: var(--radius-lg);
+  padding: var(--space-5); background: var(--surface); color: var(--ink);
+  max-inline-size: 32rem; inline-size: calc(100% - 2rem);
+}
+dialog::backdrop { background: rgb(10 17 22 / 0.55); }
+
+.icon { inline-size: 1.125em; block-size: 1.125em; flex: none; }
+
+/* Focusing the answer box scrolls it to the top of the viewport, which on a
+   sticky-header layout puts the reference and box number underneath the
+   header. Reserve the header's height when scrolling to either. */
+.panel, .answer { scroll-margin-block-start: 7rem; }
+
+@media (max-width: 40rem) {
+  /* Two stacked rows of controls plus a six-slot rail is most of a phone
+     screen. The header stops being sticky and the rail loses its interval
+     captions, so the verse starts near the top of the viewport. */
+  .masthead { position: static; }
+  .panel, .answer { scroll-margin-block-start: var(--space-3); }
+
+  .rail { grid-template-columns: repeat(3, 1fr); }
+  .slot { padding-block: var(--space-2); }
+  .slot__interval { display: none; }
+  .slot__count { font-size: 1.5rem; }
+
+  .stat-row { gap: var(--space-5); }
+  .stat__value { font-size: 2.25rem; }
+  .verse { font-size: 1.25rem; }
+  .verse[lang="ar"] { font-size: 1.5rem; }
+  .masthead__inner { padding-inline: var(--space-3); }
+  .shell { padding-inline: var(--space-3); }
+  .panel { padding: var(--space-4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to the review</a>
+
+<div x-data="trainer()" x-init="boot()" x-cloak>
+
+  <header class="masthead">
+    <div class="masthead__inner">
+      <h1 class="wordmark"><span>Scripture</span><em>memory</em></h1>
+
+      <div class="clock" role="group" aria-label="App clock">
+        <p class="clock__date" :data-travelled="offsetDays !== 0">
+          <span x-text="longDate(appDate)">—</span>
+          <small x-text="offsetDays === 0 ? 'today' : (offsetDays > 0 ? '+' + offsetDays + ' days' : offsetDays + ' days')"></small>
+        </p>
+        <button class="btn btn--step" @click="travel({advance_days: 1})" :disabled="busy">+1d</button>
+        <button class="btn btn--step" @click="travel({advance_days: 7})" :disabled="busy">+7d</button>
+        <button class="btn btn--step" @click="travel({advance_days: 30})" :disabled="busy">+30d</button>
+        <button class="btn btn--step" @click="openJump()" :disabled="busy">Jump…</button>
+        <button class="btn btn--step btn--quiet" @click="travel({offset_days: 0})" :disabled="busy || offsetDays === 0">Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell" id="main">
+
+    <p class="banner" x-show="offline" role="status">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+        <path d="M3 3l18 18M8.5 16.5a5 5 0 017 0M5 13a10 10 0 014-2.6M19 13a10 10 0 00-6-2.9M2 9a15 15 0 014.6-3M21.5 9a15 15 0 00-9-3.9"/>
+      </svg>
+      <span>Sync unavailable — studying offline from your last visit. Grades will not be saved until you reconnect.</span>
+    </p>
+
+    <p class="banner" x-show="error" role="alert" x-text="error"></p>
+
+    <!-- The box rail: six slots, 0 to 5, holding every card. -->
+    <section aria-labelledby="rail-heading">
+      <h2 class="sr-only" id="rail-heading">Cards in each Leitner box</h2>
+      <div class="rail">
+        <template x-for="b in [0,1,2,3,4,5]" :key="b">
+          <div class="slot" :data-active="current && current.box === b">
+            <p class="slot__n">Box <span x-text="b"></span></p>
+            <p class="slot__count" x-text="boxCounts[b] || 0">0</p>
+            <p class="slot__interval" x-text="intervalLabel(b)"></p>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- HOME ------------------------------------------------------------- -->
+    <section class="panel" x-show="screen === 'home'" aria-labelledby="home-heading">
+      <p class="eyebrow">Today</p>
+      <h2 id="home-heading" style="font-family: var(--display); font-size: 2rem; font-weight: 400;">
+        <span x-text="totalDue"></span> due<span x-show="totalDue > cap">, <span x-text="cap"></span> in this session</span>
+      </h2>
+
+      <div class="stat-row">
+        <div>
+          <p class="stat__value" x-text="streak"></p>
+          <p class="stat__label" x-text="streak === 1 ? 'day streak' : 'day streak'"></p>
+        </div>
+        <div>
+          <p class="stat__value" x-text="cards.length"></p>
+          <p class="stat__label">verses in the deck</p>
+        </div>
+        <div>
+          <p class="stat__value" x-text="learned"></p>
+          <p class="stat__label">in box 4 or 5</p>
+        </div>
+      </div>
+
+      <div class="toolbar" style="margin-block-start: var(--space-5);">
+        <button class="btn btn--primary" @click="startSession()" :disabled="totalDue === 0 || busy">
+          Start reviewing
+        </button>
+        <label class="sr-only" for="lang">Languages</label>
+        <select class="btn" id="lang" x-model="langChoice" @change="setLanguages()">
+          <option value="">All four languages</option>
+          <option value="en">English only</option>
+          <option value="zh">Chinese only</option>
+          <option value="ar">Arabic only</option>
+          <option value="hi">Hindi only</option>
+        </select>
+        <span class="spacer"></span>
+        <button class="btn btn--quiet" @click="$refs.data.showModal()">Export / import</button>
+      </div>
+
+      <p class="empty" x-show="totalDue === 0" style="padding-block: var(--space-6);">
+        <span class="empty__title">Nothing due today.</span><br>
+        Travel forward with <strong>+1d</strong> in the header to see the schedule respond.
+      </p>
+    </section>
+
+    <!-- REVIEW ----------------------------------------------------------- -->
+    <section class="panel" x-show="screen === 'review' && current" aria-labelledby="verse-ref">
+      <div class="meta">
+        <span x-text="current?.reference"></span>
+        <span x-text="languageName(current?.language)"></span>
+        <span>Box <span x-text="current?.box"></span></span>
+        <span x-text="'Card ' + (position + 1) + ' of ' + queue.length"></span>
+      </div>
+
+      <h2 class="sr-only" id="verse-ref" x-text="current?.reference + ', ' + languageName(current?.language)"></h2>
+
+      <!-- The prompt: the reference is the cue; the verse itself is hidden
+           until it has been answered or revealed. -->
+      <p class="eyebrow" style="margin-block-start: var(--space-4);">Recite from memory</p>
+
+      <div x-show="revealed || verdict">
+        <p class="verse" :lang="current?.language" :dir="current?.direction" x-text="current?.text"></p>
+      </div>
+
+      <div x-show="!revealed && !verdict">
+        <p class="verse" style="color: var(--ink-faint); font-family: var(--display); font-style: italic;">
+          The verse is hidden. Type what you remember.
+        </p>
+      </div>
+
+      <label class="field-label" for="answer">Your answer</label>
+      <textarea class="answer" id="answer" x-ref="answer"
+                x-model="answerText"
+                :lang="current?.language" :dir="current?.direction"
+                :placeholder="'Type ' + current?.reference + ' in ' + languageName(current?.language)"
+                @keydown.ctrl.enter="submit()" @keydown.meta.enter="submit()"></textarea>
+      <p class="field-help">
+        Punctuation, capitalisation and extra spaces are ignored. Diacritics are optional in Arabic and Hindi.
+        <span style="white-space: nowrap;">Ctrl + Enter</span> checks your answer.
+      </p>
+
+      <div class="toolbar" style="margin-block-start: var(--space-4);">
+        <button class="btn btn--primary" @click="submit()" :disabled="busy || !answerText.trim()">Check answer</button>
+        <button class="btn" @click="revealed = true" x-show="!revealed && !verdict">Show the verse</button>
+        <span class="spacer"></span>
+        <button class="btn btn--quiet" @click="endSession()">End session</button>
+      </div>
+
+      <!-- Verdict -->
+      <div class="verdict" x-show="verdict" :data-status="verdict?.status" role="status" aria-live="polite">
+        <p class="verdict__head">
+          <svg class="icon" x-show="verdict?.status === 'correct'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
+          <svg class="icon" x-show="verdict?.status === 'partial'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 7v6M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+          <svg class="icon" x-show="verdict?.status === 'incorrect'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>
+          <span x-text="verdictHeadline()"></span>
+          <span class="verdict__count" x-text="verdictCounts()"></span>
+        </p>
+
+        <p class="marked" :lang="current?.language" :dir="current?.direction" x-show="verdict?.status !== 'correct'">
+          <template x-for="(u, i) in markedUnits" :key="i">
+            <span :class="'unit unit--' + u.kind"
+                  :title="u.kind === 'bad' ? 'Position ' + u.pos + ' does not match' : (u.kind === 'missing' ? 'Position ' + u.pos + ' was missing' : '')"
+            ><span x-text="u.text"></span><span class="unit__pos" x-show="u.showPos" x-text="u.pos"></span></span>
+          </template>
+        </p>
+
+        <p class="field-help" x-show="verdict?.surplus_count" x-text="'You typed ' + verdict?.surplus_count + ' unit(s) past the end of the verse; they are struck through above.'"></p>
+      </div>
+
+      <!-- Grades. Each button says the date it produces, so the schedule is
+           never a surprise. -->
+      <div class="grades" x-show="verdict || revealed">
+        <template x-for="g in gradeButtons()" :key="g.grade">
+          <button class="grade" :class="'grade--' + g.grade" @click="grade(g.grade)" :disabled="busy">
+            <span class="grade__name" x-text="g.label"></span>
+            <span class="grade__when" x-text="g.when"></span>
+            <span class="grade__when" style="opacity:.75" x-text="g.date"></span>
+          </button>
+        </template>
+      </div>
+
+      <div class="progress" role="presentation">
+        <div class="progress__fill" :style="'inline-size:' + Math.round((position / Math.max(queue.length,1)) * 100) + '%'"></div>
+      </div>
+    </section>
+
+    <!-- SUMMARY ---------------------------------------------------------- -->
+    <section class="panel" x-show="screen === 'summary'" aria-labelledby="summary-heading">
+      <p class="eyebrow">Session complete</p>
+      <h2 id="summary-heading" style="font-family: var(--display); font-size: 2rem; font-weight: 400;">
+        <span x-text="session.length"></span> reviewed on <span x-text="longDate(appDate)"></span>
+      </h2>
+
+      <div class="stat-row">
+        <div>
+          <p class="stat__value" x-text="session.filter(s => s.status === 'correct').length"></p>
+          <p class="stat__label">exact</p>
+        </div>
+        <div>
+          <p class="stat__value" x-text="session.filter(s => s.status === 'partial').length"></p>
+          <p class="stat__label">partial</p>
+        </div>
+        <div>
+          <p class="stat__value" x-text="session.filter(s => s.status === 'incorrect' || !s.status).length"></p>
+          <p class="stat__label">missed or ungraded</p>
+        </div>
+      </div>
+
+      <table class="summary">
+        <thead>
+          <tr><th scope="col">Verse</th><th scope="col">Result</th><th scope="col">Box</th><th scope="col">Next due</th></tr>
+        </thead>
+        <tbody>
+          <template x-for="s in session" :key="s.card_id + s.due_date + s.grade">
+            <tr>
+              <td><span x-text="s.reference"></span> <span style="color: var(--ink-faint);" x-text="languageName(s.language)"></span></td>
+              <td x-text="s.status ? s.status : 'graded ' + s.grade"></td>
+              <td class="num" x-text="s.box_before + ' → ' + s.box_after"></td>
+              <td class="num" x-text="s.due_date"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+
+      <div class="toolbar" style="margin-block-start: var(--space-5);">
+        <button class="btn btn--primary" @click="goHome()">Back to today</button>
+        <button class="btn" @click="startSession()" x-show="totalDue > 0">Keep going — <span x-text="totalDue"></span> still due</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Export / import --------------------------------------------------- -->
+  <dialog x-ref="data">
+    <h2 style="font-family: var(--display); font-size: 1.5rem; font-weight: 400;">Your data</h2>
+    <p style="color: var(--ink-soft);">
+      Everything you have studied, as one JSON file. No account, no sign-in — the export button
+      works whether or not you are connected.
+    </p>
+    <div class="toolbar" style="margin-block-start: var(--space-4);">
+      <button class="btn btn--primary" @click="exportData()">Download backup</button>
+      <button class="btn" @click="$refs.file.click()">Restore from file</button>
+      <input type="file" accept="application/json" aria-label="Choose a backup file to restore"
+             x-ref="file" class="sr-only" @change="importData($event)">
+      <span class="spacer"></span>
+      <button class="btn btn--quiet" @click="$refs.data.close()">Close</button>
+    </div>
+    <p class="field-help" x-show="dataMessage" x-text="dataMessage" role="status"></p>
+  </dialog>
+
+  <!-- Jump to a date ----------------------------------------------------- -->
+  <dialog x-ref="jump">
+    <h2 style="font-family: var(--display); font-size: 1.5rem; font-weight: 400;">Jump to a date</h2>
+    <p style="color: var(--ink-soft);">The app date moves. The real calendar does not.</p>
+    <label class="field-label" for="jump-date" style="margin-block-start: var(--space-4);">App date</label>
+    <input class="btn" type="date" id="jump-date" x-model="jumpDate" style="inline-size: 100%;">
+    <div class="toolbar" style="margin-block-start: var(--space-4);">
+      <button class="btn btn--primary" @click="travel({target_date: jumpDate}); $refs.jump.close()">Travel</button>
+      <button class="btn btn--quiet" @click="$refs.jump.close()">Cancel</button>
+    </div>
+  </dialog>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/dexie@4.0.10/dist/dexie.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+<script>
+/* ---------------------------------------------------------------------------
+   Local-first client.
+
+   Dexie mirrors the four backend tables. Every load hydrates the mirror from
+   GET /api/export -- one request that returns exactly the four tables -- so an
+   offline visit still has cards, boxes, due dates and history to work from.
+   When the network is up the server is the source of truth for the queue;
+   when it is down the same rules are applied locally.
+
+   Two things are deliberately duplicated from the backend, both marked below:
+   the Leitner intervals (so a grade button can show its date before you press
+   it) and the unit split (so a mismatch position can be highlighted in the
+   verse). Both are pinned by backend tests -- see DECISIONS D19.
+--------------------------------------------------------------------------- */
+
+const API = "";
+
+// Mirror of scheduler.INTERVALS. tests/test_web_contract.py fails if they drift.
+const INTERVALS = { 0: 0, 1: 1, 2: 3, 3: 7, 4: 21, 5: 60 };
+const MAX_BOX = 5;
+const LANGUAGE_NAMES = { en: "English", zh: "Chinese", ar: "Arabic", hi: "Hindi" };
+
+/* Dexie backs the offline mirror. If its CDN is blocked the app must still
+   run against the API rather than rendering a blank page, so the mirror falls
+   back to an in-memory stand-in with the same tiny surface. */
+function volatileTable() {
+  let rows = [];
+  return {
+    toArray: async () => rows.slice(),
+    bulkPut: async (xs) => { rows = rows.concat(xs); },
+    put: async (x) => { rows.push(x); },
+    add: async (x) => { rows.push(x); },
+    clear: async () => { rows = []; },
+  };
+}
+
+const DEXIE_AVAILABLE = typeof Dexie !== "undefined";
+
+const db = DEXIE_AVAILABLE
+  ? new Dexie("scripture_memory_trainer")
+  : {
+      cards: volatileTable(), card_states: volatileTable(),
+      review_logs: volatileTable(), app_state: volatileTable(),
+      transaction: async (_mode, ...args) => args[args.length - 1](),
+    };
+
+if (DEXIE_AVAILABLE) {
+  db.version(1).stores({
+    cards: "card_id, reference, language, updated_at",
+    card_states: "card_id, box, due_date, updated_at",
+    review_logs: "++local_id, card_id, reviewed_on",
+    app_state: "id",
+  });
+}
+
+function applyGrade(box, grade) {
+  if (grade === "again") return [0, 0];
+  if (grade === "hard") return [box, Math.max(1, Math.floor((INTERVALS[box] * 60) / 100))];
+  if (grade === "good") { const b = Math.min(MAX_BOX, box + 1); return [b, INTERVALS[b]]; }
+  const b = Math.min(MAX_BOX, box + 2);
+  return [b, INTERVALS[b]];
+}
+
+function addDays(iso, days) {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Mirror of checker._split(normalize(...)). The language-specific folding rules
+// (harakat, nukta, alef forms, case) never change the number of units, so this
+// only has to strip punctuation and collapse whitespace to land on the same
+// positions the server reports.
+function splitUnits(text, lang) {
+  const s = text.normalize("NFC").replace(/\p{P}+/gu, "").replace(/\s+/g, " ").trim();
+  return lang === "zh" ? Array.from(s.replace(/ /g, "")) : (s ? s.split(" ") : []);
+}
+
+function trainer() {
+  return {
+    screen: "home",
+    cards: [], queue: [], position: 0, session: [],
+    appDate: new Date().toISOString().slice(0, 10),
+    offsetDays: 0, totalDue: 0, cap: 20, langChoice: "",
+    answerText: "", verdict: null, revealed: false,
+    busy: false, offline: false, error: "", dataMessage: "", jumpDate: "",
+    streak: 0,
+
+    get current() { return this.queue[this.position] || null; },
+    get boxCounts() {
+      const counts = {};
+      for (const c of this.cards) counts[c.box] = (counts[c.box] || 0) + 1;
+      return counts;
+    },
+    get learned() { return this.cards.filter((c) => c.box >= 4).length; },
+    get markedUnits() {
+      if (!this.verdict || !this.current) return [];
+      const units = splitUnits(this.current.text, this.current.language);
+      const wrong = new Set(this.verdict.mismatch_positions || []);
+      const missingFrom = this.verdict.missing_from;
+      const out = units.map((text, i) => {
+        const pos = i + 1;
+        let kind = "ok";
+        if (wrong.has(pos)) kind = "bad";
+        else if (missingFrom && pos >= missingFrom) kind = "missing";
+        // One marker per mismatch, and one on the first unit never reached --
+        // numbering all 22 missing words buries the one that matters.
+        return { text, pos, kind, showPos: kind === "bad" || pos === missingFrom };
+      });
+      for (let n = 0; n < (this.verdict.surplus_count || 0); n++) {
+        out.push({ text: "…", pos: units.length + n + 1, kind: "extra", showPos: false });
+      }
+      return out;
+    },
+
+    async boot() {
+      await this.hydrate();
+      await this.refresh();
+    },
+
+    async api(path, options) {
+      const response = await fetch(API + path, {
+        headers: { "Content-Type": "application/json" },
+        ...options,
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.detail || `${response.status} ${response.statusText}`);
+      }
+      return response.json();
+    },
+
+    /* Pull the whole database into the local mirror. One call, four tables. */
+    async hydrate() {
+      try {
+        const dump = await this.api("/api/export");
+        await db.transaction("rw", db.cards, db.card_states, db.review_logs, db.app_state, async () => {
+          await Promise.all([db.cards.clear(), db.card_states.clear(), db.review_logs.clear(), db.app_state.clear()]);
+          await db.cards.bulkPut(dump.cards);
+          await db.card_states.bulkPut(dump.card_states);
+          await db.review_logs.bulkPut(dump.review_logs.map(({ id, ...rest }) => rest));
+          await db.app_state.put(dump.app_state);
+        });
+        this.offline = false;
+      } catch {
+        this.offline = true;
+      }
+      await this.readMirror();
+    },
+
+    /* Build the view from Dexie. This is what makes an offline load work. */
+    async readMirror() {
+      const [cards, states, logs, appState] = await Promise.all([
+        db.cards.toArray(), db.card_states.toArray(), db.review_logs.toArray(), db.app_state.toArray(),
+      ]);
+      const byId = Object.fromEntries(states.map((s) => [s.card_id, s]));
+      this.cards = cards
+        .filter((c) => !c.deleted)
+        .map((c) => ({ ...c, box: byId[c.card_id]?.box ?? 0, due_date: byId[c.card_id]?.due_date ?? null }))
+        .sort((a, b) => a.reference.localeCompare(b.reference));
+
+      if (appState[0]) {
+        this.offsetDays = appState[0].offset_days || 0;
+        this.langChoice = (appState[0].language_filter || "").split(",")[0] || "";
+      }
+      if (this.offline) this.appDate = addDays(new Date().toISOString().slice(0, 10), this.offsetDays);
+      this.streak = this.computeStreak(logs);
+      if (this.offline) this.buildLocalQueue();
+    },
+
+    /* Consecutive app-dates ending today that have at least one review. */
+    computeStreak(logs) {
+      const days = new Set(logs.map((l) => l.reviewed_on));
+      if (!days.size) return 0;
+      let streak = 0;
+      let cursor = days.has(this.appDate) ? this.appDate : addDays(this.appDate, -1);
+      while (days.has(cursor)) { streak++; cursor = addDays(cursor, -1); }
+      return streak;
+    },
+
+    /* Mirror of queue.build_queue: due <= today, (due, box, reference), cap 20. */
+    buildLocalQueue() {
+      const langs = this.langChoice ? [this.langChoice] : null;
+      const due = this.cards
+        .filter((c) => c.due_date && c.due_date <= this.appDate)
+        .filter((c) => !langs || langs.includes(c.language))
+        .sort((a, b) =>
+          a.due_date.localeCompare(b.due_date) || a.box - b.box || a.reference.localeCompare(b.reference));
+      this.totalDue = due.length;
+      this.queue = due.slice(0, this.cap);
+    },
+
+    async refresh() {
+      if (this.offline) { this.buildLocalQueue(); return; }
+      try {
+        const [clock, queue] = await Promise.all([this.api("/api/clock"), this.api("/api/queue")]);
+        this.appDate = clock.app_date;
+        this.offsetDays = clock.offset_days;
+        this.langChoice = (clock.language_filter || [])[0] || "";
+        this.cap = queue.cap;
+        this.totalDue = queue.total_due;
+        this.queue = queue.cards;
+        await this.readMirrorCards();
+      } catch (e) {
+        this.offline = true;
+        await this.readMirror();
+      }
+    },
+
+    /* Box counts come from every card, not just the due ones. */
+    async readMirrorCards() {
+      try {
+        const cards = await this.api("/api/cards");
+        this.cards = cards;
+        await db.transaction("rw", db.cards, db.card_states, async () => {
+          await db.card_states.bulkPut(cards.map((c) => ({
+            card_id: c.card_id, box: c.box, due_date: c.due_date,
+            updated_at: c.updated_at, deleted: false,
+          })));
+        });
+        const logs = await db.review_logs.toArray();
+        this.streak = this.computeStreak(logs);
+      } catch { /* the mirror already has yesterday's answer */ }
+    },
+
+    async travel(payload) {
+      if (this.offline) { this.error = "Reconnect to move the clock — it lives on the server."; return; }
+      this.busy = true; this.error = "";
+      try {
+        const clock = await this.api("/api/clock", { method: "POST", body: JSON.stringify(payload) });
+        this.appDate = clock.app_date;
+        this.offsetDays = clock.offset_days;
+        this.verdict = null; this.answerText = ""; this.revealed = false;
+        await this.refresh();
+        if (this.screen === "review") this.startSession();
+      } catch (e) { this.error = e.message; } finally { this.busy = false; }
+    },
+
+    openJump() { this.jumpDate = this.appDate; this.$refs.jump.showModal(); },
+
+    async setLanguages() {
+      const filter = this.langChoice ? [this.langChoice] : [];
+      if (!this.offline) {
+        try { await this.api("/api/clock", { method: "POST", body: JSON.stringify({ language_filter: filter }) }); }
+        catch (e) { this.error = e.message; }
+      }
+      await this.refresh();
+    },
+
+    startSession() {
+      this.session = [];
+      this.position = 0;
+      this.answerText = ""; this.verdict = null; this.revealed = false;
+      this.screen = "review";
+      this.$nextTick(() => this.$refs.answer?.focus());
+    },
+
+    goHome() { this.screen = "home"; this.refresh(); },
+
+    endSession() { this.screen = this.session.length ? "summary" : "home"; this.refresh(); },
+
+    async submit() {
+      if (!this.current || !this.answerText.trim()) return;
+      this.busy = true; this.error = "";
+      try {
+        const body = JSON.stringify({ card_id: this.current.card_id, answer_text: this.answerText });
+        const result = await this.api("/api/check", { method: "POST", body });
+        this.verdict = result.verdict;
+        this.revealed = true;
+      } catch (e) { this.error = e.message; } finally { this.busy = false; }
+    },
+
+    gradeButtons() {
+      const box = this.current?.box ?? 0;
+      const labels = { again: "Again", hard: "Hard", good: "Good", easy: "Easy" };
+      return ["again", "hard", "good", "easy"].map((grade) => {
+        const [, interval] = applyGrade(box, grade);
+        const relative =
+          interval === 0 ? "again today" : interval === 1 ? "tomorrow" : `in ${interval} days`;
+        return {
+          grade,
+          label: labels[grade],
+          when: relative,
+          date: this.shortDate(addDays(this.appDate, interval)),
+        };
+      });
+    },
+
+    async grade(chosen) {
+      if (!this.current) return;
+      this.busy = true; this.error = "";
+      const card = this.current;
+      try {
+        const body = JSON.stringify({
+          card_id: card.card_id,
+          grade: chosen,
+          answer_text: this.answerText.trim() ? this.answerText : null,
+        });
+        const result = await this.api("/api/review", { method: "POST", body });
+
+        this.session.push({
+          card_id: card.card_id, reference: card.reference, language: card.language,
+          grade: chosen, status: result.verdict?.status || null,
+          box_before: result.box_before, box_after: result.box_after, due_date: result.due_date,
+        });
+
+        await db.card_states.put({
+          card_id: card.card_id, box: result.box_after, due_date: result.due_date,
+          updated_at: new Date().toISOString(), deleted: false,
+        });
+        await db.review_logs.add({
+          card_id: card.card_id, reviewed_on: result.app_date, grade: chosen,
+          box_before: result.box_before, box_after: result.box_after,
+          interval_days: result.interval_days, due_date: result.due_date,
+        });
+
+        const mirrored = this.cards.find((c) => c.card_id === card.card_id);
+        if (mirrored) { mirrored.box = result.box_after; mirrored.due_date = result.due_date; }
+
+        // `again` schedules the card for today, so it belongs at the end of this
+        // session's queue rather than tomorrow's.
+        this.queue.splice(this.position, 1);
+        if (result.due_today_again) this.queue.push({ ...card, box: result.box_after, due_date: result.due_date });
+
+        this.answerText = ""; this.verdict = null; this.revealed = false;
+        if (this.position >= this.queue.length) {
+          this.screen = "summary";
+          this.refresh();
+        } else {
+          this.$nextTick(() => this.$refs.answer?.focus());
+        }
+      } catch (e) { this.error = e.message; } finally { this.busy = false; }
+    },
+
+    /* --- display helpers --- */
+
+    languageName(code) { return LANGUAGE_NAMES[code] || code || ""; },
+
+    intervalLabel(box) {
+      const days = INTERVALS[box];
+      return days === 0 ? "same day" : days === 1 ? "1 day" : `${days} days`;
+    },
+
+    shortDate(iso) {
+      if (!iso) return "";
+      return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+        day: "numeric", month: "short",
+      });
+    },
+
+    longDate(iso) {
+      if (!iso) return "";
+      return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+        weekday: "short", day: "numeric", month: "short", year: "numeric",
+      });
+    },
+
+    verdictHeadline() {
+      if (!this.verdict) return "";
+      if (this.verdict.status === "correct") return "Exact match";
+      if (this.verdict.status === "incorrect") return "Nothing matched";
+      return "Partly there";
+    },
+
+    verdictCounts() {
+      if (!this.verdict) return "";
+      const v = this.verdict;
+      const parts = [`${v.matched} of ${v.total} ${v.unit} matched`];
+      if (v.mismatch_positions?.length) {
+        parts.push(`wrong at ${v.mismatch_positions.length > 4
+          ? v.mismatch_positions.slice(0, 4).join(", ") + "…"
+          : v.mismatch_positions.join(", ")}`);
+      }
+      if (v.missing_count) parts.push(`${v.missing_count} missing from ${v.missing_from}`);
+      return parts.join(" · ");
+    },
+
+    /* --- export / import: no account required --- */
+
+    async exportData() {
+      this.dataMessage = "";
+      let dump;
+      try {
+        dump = await this.api("/api/export");
+      } catch {
+        const [cards, card_states, review_logs, app_state] = await Promise.all([
+          db.cards.toArray(), db.card_states.toArray(), db.review_logs.toArray(), db.app_state.toArray(),
+        ]);
+        dump = {
+          format: "scripture-memory-trainer/export", version: 1,
+          exported_at: new Date().toISOString(), app_date: this.appDate,
+          app_state: app_state[0] || { id: 1, offset_days: this.offsetDays },
+          cards, card_states, review_logs,
+        };
+        this.dataMessage = "Exported from your offline copy.";
+      }
+      const blob = new Blob([JSON.stringify(dump, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `scripture-memory-${this.appDate}.json`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    },
+
+    async importData(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      this.dataMessage = "Restoring…";
+      try {
+        const payload = JSON.parse(await file.text());
+        const result = await this.api("/api/import", { method: "POST", body: JSON.stringify(payload) });
+        this.dataMessage =
+          `Restored: ${result.cards_created + result.cards_updated} cards and ` +
+          `${result.states_created + result.states_updated} review states changed, ` +
+          `${result.review_logs_created} reviews added.`;
+        await this.hydrate();
+        await this.refresh();
+      } catch (e) {
+        this.dataMessage = `Could not restore that file: ${e.message}`;
+      } finally {
+        event.target.value = "";
+      }
+    },
+  };
+}
+</script>
+</body>
+</html>
