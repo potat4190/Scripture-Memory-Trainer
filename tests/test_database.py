@@ -96,3 +96,27 @@ def test_get_session_yields_a_session_and_closes_it(tmp_path: Path) -> None:
             assert pool.checkedout() == 0, "the dependency leaked a connection"
     finally:
         engine.dispose()
+
+
+def test_the_seed_command_fills_a_fresh_database(tmp_path: Path, capsys: object) -> None:
+    """`python -m scripture_memory_trainer` is the one command a deploy runs after
+    migrating, so it gets a test rather than only a mention in the README."""
+    from unittest import mock as _mock
+
+    from scripture_memory_trainer.__main__ import main
+    from scripture_memory_trainer.tables import Card as CardTable
+
+    url = f"sqlite:///{tmp_path / 'seeded.db'}"
+    engine = make_engine(url)
+    SQLModel.metadata.create_all(engine)
+    engine.dispose()
+
+    with _mock.patch.dict(os.environ, {"DATABASE_URL": url}, clear=False):
+        main()
+
+    verify = make_engine(url)
+    try:
+        with Session(verify) as session:
+            assert len(session.exec(select(CardTable)).all()) == 32
+    finally:
+        verify.dispose()
