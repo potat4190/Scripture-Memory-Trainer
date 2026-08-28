@@ -1,0 +1,7 @@
+# Normalize line endings: LF in the repo, checked out as-is.
+# CI and the deploy target both run Linux.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.woff2 binary

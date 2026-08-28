@@ -1,0 +1,170 @@
+[
+  {
+    "id": 1,
+    "reference": "John 3:16",
+    "lang": "en",
+    "change": "All lowercase",
+    "input": "for god so loved the world, that he gave his only begotten son, that whosoever believeth in him should not perish, but have everlasting life.",
+    "expected_verdict": "Correct. Case is ignored."
+  },
+  {
+    "id": 2,
+    "reference": "John 3:16",
+    "lang": "en",
+    "change": "Punctuation replaced with exclamation marks",
+    "input": "For God so loved the world! that he gave his only begotten Son! that whosoever believeth in him should not perish! but have everlasting life!!!",
+    "expected_verdict": "Correct. Punctuation is ignored."
+  },
+  {
+    "id": 3,
+    "reference": "Psalm 23:1",
+    "lang": "en",
+    "change": "Collapsed whitespace",
+    "input": "The LORD   is  my    shepherd ;  I shall not want.",
+    "expected_verdict": "Correct. Repeated whitespace collapses."
+  },
+  {
+    "id": 4,
+    "reference": "Psalm 23:1",
+    "lang": "en",
+    "change": "One word misspelled",
+    "input": "The Lord is my shepard; I shall not want.",
+    "expected_verdict": "Partial. 1 of 9 words wrong at position 5 (shepard / shepherd)."
+  },
+  {
+    "id": 5,
+    "reference": "Philippians 4:13",
+    "lang": "en",
+    "change": "Truncated after 7 words",
+    "input": "I can do all things through Christ",
+    "expected_verdict": "Partial. 7 of 10 words matched; 3 missing from position 8."
+  },
+  {
+    "id": 6,
+    "reference": "Matthew 28:19",
+    "lang": "en",
+    "change": "Curly apostrophe and quotes",
+    "input": "Go ye therefore, and teach all nations, baptizing them in the name of the Father’s, and of the Son, and of the Holy Ghost:",
+    "expected_verdict": "Partial. Curly apostrophe normalises to straight, but Father’s is still 1 word wrong at position 16."
+  },
+  {
+    "id": 7,
+    "reference": "Matthew 28:19",
+    "lang": "en",
+    "change": "Empty string",
+    "input": "",
+    "expected_verdict": "Incorrect. 0 of 22 words matched."
+  },
+  {
+    "id": 8,
+    "reference": "Leviticus 19:34",
+    "lang": "en",
+    "change": "Trailing and leading whitespace",
+    "input": "But the stranger that dwelleth with you shall be unto you as one born among you, and thou shalt love him as thyself; for ye were strangers in the land of Egypt: I am the LORD your God.",
+    "expected_verdict": "Correct. Outer whitespace is trimmed."
+  },
+  {
+    "id": 9,
+    "reference": "John 3:16",
+    "lang": "zh",
+    "change": "Full-width comma replaced with ASCII comma",
+    "input": "神爱世人,甚至将他的独生子赐给他们,叫一切信他的,不致灭亡,反得永生。",
+    "expected_verdict": "Correct. Full-width forms normalise to ASCII."
+  },
+  {
+    "id": 10,
+    "reference": "John 3:16",
+    "lang": "zh",
+    "change": "Traditional characters instead of simplified",
+    "input": "神愛世人，甚至將他的獨生子賜給他們，叫一切信他的，不致滅亡，反得永生。",
+    "expected_verdict": "Incorrect. Script conversion is not performed. Every differing character counts."
+  },
+  {
+    "id": 11,
+    "reference": "Philippians 4:13",
+    "lang": "zh",
+    "change": "No punctuation at all",
+    "input": "我靠著那加给我力量的凡事都能做",
+    "expected_verdict": "Correct. Punctuation is ignored."
+  },
+  {
+    "id": 12,
+    "reference": "Psalm 23:1",
+    "lang": "zh",
+    "change": "One character substituted",
+    "input": "耶和华是我的牧者，我必不致却乏。",
+    "expected_verdict": "Partial. 1 character wrong."
+  },
+  {
+    "id": 13,
+    "reference": "Romans 8:28",
+    "lang": "ar",
+    "change": "All harakat omitted",
+    "input": "ونحن نعلم أن كل ٱلأشياء تعمل معا للخير للذين يحبون ٱلله، ٱلذين هم مدعوون حسب قصده.",
+    "expected_verdict": "Correct. Diacritics are optional."
+  },
+  {
+    "id": 14,
+    "reference": "John 3:16",
+    "lang": "ar",
+    "change": "Alef wasla written as plain alef",
+    "input": "لِأَنَّهُ هَكَذَا أَحَبَّ اللهُ الْعَالَمَ حَتَّى بَذَلَ ابْنَهُ الْوَحِيدَ، لِكَيْ لَا يَهْلِكَ كُلُّ مَنْ يُؤْمِنُ بِهِ، بَلْ تَكُونُ لَهُ الْحَيَاةُ الْأَبَدِيَّةُ.",
+    "expected_verdict": "Correct. Alef forms are normalised."
+  },
+  {
+    "id": 15,
+    "reference": "John 3:16",
+    "lang": "ar",
+    "change": "Harakat omitted and alef normalised together",
+    "input": "لأنه هكذا أحب الله العالم حتى بذل ابنه الوحيد، لكي لا يهلك كل من يؤمن به، بل تكون له الحياة الأبدية.",
+    "expected_verdict": "Correct. Both normalisations apply."
+  },
+  {
+    "id": 16,
+    "reference": "Philippians 4:13",
+    "lang": "ar",
+    "change": "One word replaced",
+    "input": "أستطيع كلم شيء في المسيح الذي يقويني.",
+    "expected_verdict": "Partial. 1 word wrong at position 2."
+  },
+  {
+    "id": 17,
+    "reference": "Proverbs 3:5",
+    "lang": "ar",
+    "change": "Second clause missing",
+    "input": "توكل على الرب بكل قلبك",
+    "expected_verdict": "Partial. First clause only; remaining words missing."
+  },
+  {
+    "id": 18,
+    "reference": "Isaiah 40:31",
+    "lang": "hi",
+    "change": "Double danda omitted at end",
+    "input": "परन्तु जो यहोवा की बाट जोहते हैं, वे नया बल प्राप्त करते जाएंगे, वे उकाबों की नाईं उड़ेंगे, वे दौड़ेंगे और श्रमित न होंगे, चलेंगे और थकित न होंगे",
+    "expected_verdict": "Correct. Punctuation is ignored."
+  },
+  {
+    "id": 19,
+    "reference": "Psalm 23:1",
+    "lang": "hi",
+    "change": "Nukta omitted",
+    "input": "यहोवा मेरा चरवाहा है, मुझे कुछ घटी न होगी।",
+    "expected_verdict": "Correct. Nukta is optional."
+  },
+  {
+    "id": 20,
+    "reference": "Philippians 4:13",
+    "lang": "hi",
+    "change": "Exact text",
+    "input": "जो मुझे सामर्थ देता है उस में मैं सब कुछ कर सकता हूं।",
+    "expected_verdict": "Correct."
+  },
+  {
+    "id": 21,
+    "reference": "Proverbs 3:5",
+    "lang": "hi",
+    "change": "One word replaced",
+    "input": "तू अपनी समझ का सहारा न लेना, वरन सम्पूर्ण मन से यहोवा पर विश्वास रखना।",
+    "expected_verdict": "Partial. 1 word wrong."
+  }
+]

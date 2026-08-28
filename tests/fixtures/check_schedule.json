@@ -1,0 +1,113 @@
+[
+  {
+    "id": 1,
+    "start_box": 0,
+    "start_date": "2026-09-01",
+    "grades": [
+      "good",
+      "good",
+      "good",
+      "good"
+    ],
+    "trace": "good→box1, +1d, due 2026-09-02 | good→box2, +3d, due 2026-09-05 | good→box3, +7d, due 2026-09-12 | good→box4, +21d, due 2026-10-03",
+    "expected_box": 4,
+    "expected_due": "2026-10-03"
+  },
+  {
+    "id": 2,
+    "start_box": 0,
+    "start_date": "2026-09-01",
+    "grades": [
+      "good",
+      "again",
+      "good",
+      "good"
+    ],
+    "trace": "good→box1, +1d, due 2026-09-02 | again→box0, +0d, due 2026-09-02 | good→box1, +1d, due 2026-09-03 | good→box2, +3d, due 2026-09-06",
+    "expected_box": 2,
+    "expected_due": "2026-09-06"
+  },
+  {
+    "id": 3,
+    "start_box": 0,
+    "start_date": "2026-09-01",
+    "grades": [
+      "easy",
+      "easy",
+      "good"
+    ],
+    "trace": "easy→box2, +3d, due 2026-09-04 | easy→box4, +21d, due 2026-09-25 | good→box5, +60d, due 2026-11-24",
+    "expected_box": 5,
+    "expected_due": "2026-11-24"
+  },
+  {
+    "id": 4,
+    "start_box": 0,
+    "start_date": "2026-09-01",
+    "grades": [
+      "good",
+      "hard",
+      "hard",
+      "good"
+    ],
+    "trace": "good→box1, +1d, due 2026-09-02 | hard→box1, +1d, due 2026-09-03 | hard→box1, +1d, due 2026-09-04 | good→box2, +3d, due 2026-09-07",
+    "expected_box": 2,
+    "expected_due": "2026-09-07"
+  },
+  {
+    "id": 5,
+    "start_box": 0,
+    "start_date": "2026-09-01",
+    "grades": [
+      "again",
+      "again",
+      "good",
+      "easy"
+    ],
+    "trace": "again→box0, +0d, due 2026-09-01 | again→box0, +0d, due 2026-09-01 | good→box1, +1d, due 2026-09-02 | easy→box3, +7d, due 2026-09-09",
+    "expected_box": 3,
+    "expected_due": "2026-09-09"
+  },
+  {
+    "id": 6,
+    "start_box": 0,
+    "start_date": "2026-09-01",
+    "grades": [
+      "easy",
+      "hard",
+      "good",
+      "easy"
+    ],
+    "trace": "easy→box2, +3d, due 2026-09-04 | hard→box2, +1d, due 2026-09-05 | good→box3, +7d, due 2026-09-12 | easy→box5, +60d, due 2026-11-11",
+    "expected_box": 5,
+    "expected_due": "2026-11-11"
+  },
+  {
+    "id": 7,
+    "start_box": 0,
+    "start_date": "2026-09-01",
+    "grades": [
+      "good",
+      "good",
+      "easy",
+      "hard",
+      "good"
+    ],
+    "trace": "good→box1, +1d, due 2026-09-02 | good→box2, +3d, due 2026-09-05 | easy→box4, +21d, due 2026-09-26 | hard→box4, +12d, due 2026-10-08 | good→box5, +60d, due 2026-12-07",
+    "expected_box": 5,
+    "expected_due": "2026-12-07"
+  },
+  {
+    "id": 8,
+    "start_box": 0,
+    "start_date": "2026-09-01",
+    "grades": [
+      "hard",
+      "hard",
+      "hard"
+    ],
+    "trace": "hard→box0, +1d, due 2026-09-02 | hard→box0, +1d, due 2026-09-03 | hard→box0, +1d, due 2026-09-04",
+    "expected_box": 0,
+    "expected_due": "2026-09-04"
+  }
+]

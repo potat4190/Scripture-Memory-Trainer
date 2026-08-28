@@ -1,0 +1,53 @@
+[project]
+name = "scripture-memory-trainer"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Rhidaya Shrestha", email = "rhidayash@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.19.1",
+    "fastapi>=0.141.1",
+    "psycopg[binary]>=3.3.4",
+    "pydantic>=2.13.4",
+    "python-dotenv>=1.2.3",
+    "regex>=2026.7.19",
+    "sqlmodel>=0.0.39",
+]
+
+[project.scripts]
+scripture-memory-trainer = "scripture_memory_trainer:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.165.10",
+    "mypy>=2.3.1",
+    "pre-commit>=4.6.2",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.5",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+# docs/ holds prose with illustrative code blocks, not project source.
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["src", "tests"]

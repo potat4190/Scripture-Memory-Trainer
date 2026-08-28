@@ -1,0 +1,226 @@
+[
+  {
+    "card_id": "John_3-16_en",
+    "reference": "John 3:16",
+    "language": "en",
+    "direction": "ltr",
+    "text": "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."
+  },
+  {
+    "card_id": "John_3-16_zh",
+    "reference": "John 3:16",
+    "language": "zh",
+    "direction": "ltr",
+    "text": "神爱世人，甚至将他的独生子赐给他们，叫一切信他的，不致灭亡，反得永生。"
+  },
+  {
+    "card_id": "John_3-16_ar",
+    "reference": "John 3:16",
+    "language": "ar",
+    "direction": "rtl",
+    "text": "لِأَنَّهُ هَكَذَا أَحَبَّ ٱللهُ ٱلْعَالَمَ حَتَّى بَذَلَ ٱبْنَهُ ٱلْوَحِيدَ، لِكَيْ لَا يَهْلِكَ كُلُّ مَنْ يُؤْمِنُ بِهِ، بَلْ تَكُونُ لَهُ ٱلْحَيَاةُ ٱلْأَبَدِيَّةُ."
+  },
+  {
+    "card_id": "John_3-16_hi",
+    "reference": "John 3:16",
+    "language": "hi",
+    "direction": "ltr",
+    "text": "क्योंकि परमेश्वर ने जगत से ऐसा प्रेम रखा कि उस ने अपना एकलौता पुत्र दे दिया, ताकि जो कोई उस पर विश्वास करे, वह नाश न हो, परन्तु अनन्त जीवन पाए।"
+  },
+  {
+    "card_id": "Psalm_23-1_en",
+    "reference": "Psalm 23:1",
+    "language": "en",
+    "direction": "ltr",
+    "text": "The LORD is my shepherd; I shall not want."
+  },
+  {
+    "card_id": "Psalm_23-1_zh",
+    "reference": "Psalm 23:1",
+    "language": "zh",
+    "direction": "ltr",
+    "text": "耶和华是我的牧者，我必不致缺乏。"
+  },
+  {
+    "card_id": "Psalm_23-1_ar",
+    "reference": "Psalm 23:1",
+    "language": "ar",
+    "direction": "rtl",
+    "text": "ٱلرَّبُّ رَاعِيَّ فَلَا يُعْوِزُنِي شَيْءٌ."
+  },
+  {
+    "card_id": "Psalm_23-1_hi",
+    "reference": "Psalm 23:1",
+    "language": "hi",
+    "direction": "ltr",
+    "text": "यहोवा मेरा चरवाहा है, मुझे कुछ घटी न होगी।"
+  },
+  {
+    "card_id": "Romans_8-28_en",
+    "reference": "Romans 8:28",
+    "language": "en",
+    "direction": "ltr",
+    "text": "And we know that all things work together for good to them that love God, to them who are the called according to his purpose."
+  },
+  {
+    "card_id": "Romans_8-28_zh",
+    "reference": "Romans 8:28",
+    "language": "zh",
+    "direction": "ltr",
+    "text": "我们晓得万事都互相效力，叫爱神的人得益处，就是按他旨意被召的人。"
+  },
+  {
+    "card_id": "Romans_8-28_ar",
+    "reference": "Romans 8:28",
+    "language": "ar",
+    "direction": "rtl",
+    "text": "وَنَحْنُ نَعْلَمُ أَنَّ كُلَّ ٱلْأَشْيَاءِ تَعْمَلُ مَعًا لِلْخَيْرِ لِلَّذِينَ يُحِبُّونَ ٱللهَ، ٱلَّذِينَ هُمْ مَدْعُوُّونَ حَسَبَ قَصْدِهِ."
+  },
+  {
+    "card_id": "Romans_8-28_hi",
+    "reference": "Romans 8:28",
+    "language": "hi",
+    "direction": "ltr",
+    "text": "और हम जानते हैं, कि जो लोग परमेश्वर से प्रेम रखते हैं, उन के लिये सब बातें मिलकर भलाई ही को उत्पन्न करती है; अर्थात उन्हीं के लिये जो उस की इच्छा के अनुसार बुलाए हुए हैं।"
+  },
+  {
+    "card_id": "Isaiah_40-31_en",
+    "reference": "Isaiah 40:31",
+    "language": "en",
+    "direction": "ltr",
+    "text": "But they that wait upon the LORD shall renew their strength; they shall mount up with wings as eagles; they shall run, and not be weary; and they shall walk, and not faint."
+  },
+  {
+    "card_id": "Isaiah_40-31_zh",
+    "reference": "Isaiah 40:31",
+    "language": "zh",
+    "direction": "ltr",
+    "text": "但那等候耶和华的必重新得力。他们必如鹰展翅上腾；他们奔跑却不困倦，行走却不疲乏。"
+  },
+  {
+    "card_id": "Isaiah_40-31_ar",
+    "reference": "Isaiah 40:31",
+    "language": "ar",
+    "direction": "rtl",
+    "text": "وَأَمَّا مُنْتَظِرُو ٱلرَّبِّ فَيُجَدِّدُونَ قُوَّةً. يَرْفَعُونَ أَجْنِحَةً كَٱلنُّسُورِ. يَرْكُضُونَ وَلَا يَتْعَبُونَ. يَمْشُونَ وَلَا يُعْيُونَ."
+  },
+  {
+    "card_id": "Isaiah_40-31_hi",
+    "reference": "Isaiah 40:31",
+    "language": "hi",
+    "direction": "ltr",
+    "text": "परन्तु जो यहोवा की बाट जोहते हैं, वे नया बल प्राप्त करते जाएंगे, वे उकाबों की नाईं उड़ेंगे, वे दौड़ेंगे और श्रमित न होंगे, चलेंगे और थकित न होंगे॥"
+  },
+  {
+    "card_id": "Matthew_28-19_en",
+    "reference": "Matthew 28:19",
+    "language": "en",
+    "direction": "ltr",
+    "text": "Go ye therefore, and teach all nations, baptizing them in the name of the Father, and of the Son, and of the Holy Ghost:"
+  },
+  {
+    "card_id": "Matthew_28-19_zh",
+    "reference": "Matthew 28:19",
+    "language": "zh",
+    "direction": "ltr",
+    "text": "所以，你们要去，使万民作我的门徒，奉父、子、圣灵的名给他们施洗。"
+  },
+  {
+    "card_id": "Matthew_28-19_ar",
+    "reference": "Matthew 28:19",
+    "language": "ar",
+    "direction": "rtl",
+    "text": "فَٱذْهَبُوا وَتَلْمِذُوا جَمِيعَ ٱلْأُمَمِ وَعَمِّدُوهُمْ بِٱسْمِ ٱلْآبِ وَٱلِٱبْنِ وَٱلرُّوحِ ٱلْقُدُسِ."
+  },
+  {
+    "card_id": "Matthew_28-19_hi",
+    "reference": "Matthew 28:19",
+    "language": "hi",
+    "direction": "ltr",
+    "text": "इसलिये तुम जाकर सब जातियों के लोगों को चेला बनाओ और उन्हें पिता और पुत्र और पवित्रआत्मा के नाम से बपतिस्मा दो।"
+  },
+  {
+    "card_id": "Philippians_4-13_en",
+    "reference": "Philippians 4:13",
+    "language": "en",
+    "direction": "ltr",
+    "text": "I can do all things through Christ which strengtheneth me."
+  },
+  {
+    "card_id": "Philippians_4-13_zh",
+    "reference": "Philippians 4:13",
+    "language": "zh",
+    "direction": "ltr",
+    "text": "我靠著那加给我力量的，凡事都能做。"
+  },
+  {
+    "card_id": "Philippians_4-13_ar",
+    "reference": "Philippians 4:13",
+    "language": "ar",
+    "direction": "rtl",
+    "text": "أَسْتَطِيعُ كُلَّ شَيْءٍ فِي ٱلْمَسِيحِ ٱلَّذِي يُقَوِّينِي."
+  },
+  {
+    "card_id": "Philippians_4-13_hi",
+    "reference": "Philippians 4:13",
+    "language": "hi",
+    "direction": "ltr",
+    "text": "जो मुझे सामर्थ देता है उस में मैं सब कुछ कर सकता हूं।"
+  },
+  {
+    "card_id": "Proverbs_3-5_en",
+    "reference": "Proverbs 3:5",
+    "language": "en",
+    "direction": "ltr",
+    "text": "Trust in the LORD with all thine heart; and lean not unto thine own understanding."
+  },
+  {
+    "card_id": "Proverbs_3-5_zh",
+    "reference": "Proverbs 3:5",
+    "language": "zh",
+    "direction": "ltr",
+    "text": "你要专心仰赖耶和华，不可倚靠自己的聪明，"
+  },
+  {
+    "card_id": "Proverbs_3-5_ar",
+    "reference": "Proverbs 3:5",
+    "language": "ar",
+    "direction": "rtl",
+    "text": "تَوَكَّلْ عَلَى ٱلرَّبِّ بِكُلِّ قَلْبِكَ، وَعَلَى فَهْمِكَ لَا تَعْتَمِدْ."
+  },
+  {
+    "card_id": "Proverbs_3-5_hi",
+    "reference": "Proverbs 3:5",
+    "language": "hi",
+    "direction": "ltr",
+    "text": "तू अपनी समझ का सहारा न लेना, वरन सम्पूर्ण मन से यहोवा पर भरोसा रखना।"
+  },
+  {
+    "card_id": "Leviticus_19-34_en",
+    "reference": "Leviticus 19:34",
+    "language": "en",
+    "direction": "ltr",
+    "text": "But the stranger that dwelleth with you shall be unto you as one born among you, and thou shalt love him as thyself; for ye were strangers in the land of Egypt: I am the LORD your God."
+  },
+  {
+    "card_id": "Leviticus_19-34_zh",
+    "reference": "Leviticus 19:34",
+    "language": "zh",
+    "direction": "ltr",
+    "text": "和你们同居的外人，你们要看他如本地人一样，并要爱他如己，因为你们在埃及地也作过寄居的。我是耶和华─你们的神。"
+  },
+  {
+    "card_id": "Leviticus_19-34_ar",
+    "reference": "Leviticus 19:34",
+    "language": "ar",
+    "direction": "rtl",
+    "text": "كَٱلْوَطَنِيِّ مِنْكُمْ يَكُونُ لَكُمُ ٱلْغَرِيبُ ٱلنَّازِلُ عِنْدَكُمْ، وَتُحِبُّهُ كَنَفْسِكَ، لِأَنَّكُمْ كُنْتُمْ غُرَبَاءَ فِي أَرْضِ مِصْرَ. أَنَا ٱلرَّبُّ إِلَهُكُمْ."
+  },
+  {
+    "card_id": "Leviticus_19-34_hi",
+    "reference": "Leviticus 19:34",
+    "language": "hi",
+    "direction": "ltr",
+    "text": "जो परदेशी तुम्हारे संग रहे वह तुम्हारे लिये देशी के समान हो, और उससे अपने ही समान प्रेम रखना; क्योंकि तुम भी मिस्र देश में परदेशी थे; मैं तुम्हारा परमेश्वर यहोवा हूं।"
+  }
+]
