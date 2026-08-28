@@ -1036,6 +1036,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "types-regex" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1058,6 +1059,7 @@ dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "ruff", specifier = ">=0.16.5" },
+    { name = "types-regex", specifier = ">=2026.7.19.20260720" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.52.4" },
 ]
 
@@ -1122,6 +1124,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b5/b4/205b0d5241d934e8add0c38aa924c4f9fb7330834ff11e5444db964ec3f9/starlette-1.6.0.tar.gz", hash = "sha256:d4e3ac5e546444960c710297a3c9fc3f7ebae1b7e963f3d36173b49da535be9b", size = 2716969, upload-time = "2026-08-08T18:27:57.512Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/cb/6a6a47d5b464bd08695d254f3da6e7986cc70c9fa5d778eda57538edfe56/starlette-1.6.0-py3-none-any.whl", hash = "sha256:a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c", size = 75969, upload-time = "2026-08-08T18:27:56.196Z" },
+]
+
+[[package]]
+name = "types-regex"
+version = "2026.7.19.20260720"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/bc/825471e08455b037c40d2c80fe9f93a574fcfef0b2e6c6fc2e248ada4adb/types_regex-2026.7.19.20260720.tar.gz", hash = "sha256:49ab8261bd46fa215245b9cb0d2fed1c1056fbdc763303714f6132208909afcf", size = 13473, upload-time = "2026-07-20T05:27:00.203Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b0/1a/9bbd3eace00c2562556570d2464afe843ef5f8118df17aee5f36fed5948f/types_regex-2026.7.19.20260720-py3-none-any.whl", hash = "sha256:70e76f05d8ef60f00227e50351f1cb81552d1cdf3fdf77350f7063c911ee26da", size = 11147, upload-time = "2026-07-20T05:26:59.245Z" },
 ]
 
 [[package]]

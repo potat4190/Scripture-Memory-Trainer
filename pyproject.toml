@@ -32,6 +32,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "ruff>=0.16.5",
+    "types-regex>=2026.7.19.20260720",
     "uvicorn[standard]>=0.52.4",
 ]
 
@@ -43,6 +44,11 @@ extend-exclude = ["docs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# The normalizer's whole job is handling confusable characters; RUF001-003
+# would flag every Arabic letter and full-width form it deliberately names.
+"src/scripture_memory_trainer/normalizer.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

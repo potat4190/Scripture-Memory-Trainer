@@ -76,19 +76,71 @@ Format: one entry per decision. `Status` is `Decided`, `Open`, or `Superseded`.
   checklist explicitly warns that doing so breaks the cases that currently pass.
   These two are expected failures; README lists them with the computed numbers.
 
+## D6 — Surplus input beyond the card length
+
+- **Status:** Decided
+- **Context:** The checklist leaves "surplus input beyond card length" as an
+  explicit open decision. If the user types more units than the card has, those
+  extra units have nothing on the card to compare against.
+- **Decision:** `checker.check()` reports surplus as its own two facts —
+  `surplus_count` and `surplus_from` (1-based) — and it does **not** feed into
+  `matched`, `total`, `mismatch_positions`, or `status`. Those four are always
+  computed from the **card's** length. Surplus with at least one earlier match is
+  `partial`; the verse still isn't an exact match, so it is never `correct`.
+
+## D7 — `Verdict` carries three fields beyond the checklist's minimum
+
+- **Status:** Decided
+- **Context:** The checklist names `status, matched, total, mismatch_positions[],
+  missing_from, unit`. `B_Rules` ("report the count **and** the first absent
+  position") and the surplus decision above need slightly more.
+- **Decision:** Add `missing_count` (the count `missing_from` alone doesn't
+  give), plus `surplus_count` / `surplus_from` (see D6). Additive only; the
+  checklist's six fields keep their exact meaning.
+
+## D8 — One `Card` type in Phase 1, not `Card` + `CardState`
+
+- **Status:** Decided (revisit in Phase 3)
+- **Context:** Phase 3 calls for separate `Card` and `CardState` SQLModel tables,
+  with state split out for sync bookkeeping (`updated_at`, `deleted`).
+- **Decision:** With no database in Phase 1, `models.Card` is a single dataclass
+  carrying `box` and `due_date` directly. `queue.build_queue()` needs exactly
+  those two plus `reference` / `language`. When Phase 3 adds the DB, this splits
+  into the two tables the checklist describes.
+
+## D9 — `storage.py` is a deliberate exception to Phase 1's "zero I/O"
+
+- **Status:** Decided
+- **Context:** Phase 1 is meant to be five pure modules that touch no disk,
+  network, or framework.
+- **Decision:** `src/scripture_memory_trainer/storage.py` does plain JSON file
+  I/O (no framework, no DB driver — so the Phase 1 *exit criterion* still holds)
+  and is kept strictly separate from the five pure files. It exists to back a
+  future terminal driver and to prototype the Phase 3 seed loader / export.
+  Nothing in the pure modules imports it.
+
+## D10 — zh traditional-vs-simplified is a **third** expected failure
+
+- **Status:** Decided — documented, not worked around
+- **Context:** `B_Check_Answers` case 10 (John 3:16, zh — traditional input
+  against a simplified card) expects **Incorrect**. Running the checker gives
+  **Partial — 23 of 30 characters matched**, 7 differing
+  (爱/愛, 将/將, 独/獨, 赐/賜, 给/給, 们/們, 灭/滅).
+- **Decision:** This is rules-correct and stays. `B_Rules` says script conversion
+  must **not** be performed and "every differing character counts"; the checklist
+  says `matched == 0 → Incorrect, otherwise Partial`. These two verses happen to
+  share 23 of 30 characters, so the rules produce Partial, not a zero-match
+  Incorrect. Per the checklist's own instruction not to tune the checker to
+  reproduce workbook artifacts, this is documented — a third known failure
+  alongside the two in D5. README must list all three.
+
 ---
 
-## Open — to be decided when Phase 1 logic is written
+## Open
 
-- **O1 — Surplus input beyond card length.** `checker.check()` must decide what
-  to do when the user types more units than the card has. Candidate: report a
-  surplus count separately; do not let it change `matched` / `total` / `status`,
-  which are computed from the card's length only.
-- **O2 — `again`-requeued card vs. the daily cap of 20.** `FLOWCHART.md` diagram
-  7 flags this. Candidate: no special-casing — `build_queue()` only knows
-  `due_date <= today`, sorts, and caps at 20; a same-day requeue is just another
-  due card on the next build.
-- **O3 — zh traditional-vs-simplified verdict.** `B_Check_Answers` case 10
-  expects **Incorrect**, but "every differing character counts" with
-  `matched == 0 → Incorrect, otherwise Partial` may land on **Partial** if the
-  two scripts share most characters. Decide and record which rule wins.
+- **O1 — `again`-requeued card vs. the daily cap of 20.** `FLOWCHART.md` diagram
+  7 flags this. `build_queue()` itself already behaves the simple way — it only
+  knows `due_date <= today`, sorts, and caps at 20, so a same-day requeue is just
+  another due card on the next build. What's still undecided is whether the
+  *session driver* (not yet written) re-inserts an `again` card within the
+  current session regardless of the cap. Decide when that driver exists.
