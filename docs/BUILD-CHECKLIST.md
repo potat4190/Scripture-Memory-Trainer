@@ -110,18 +110,21 @@ Every other spot-checked case matches exactly. Do **not** tune your checker to r
 - [x] Every table gets `updated_at: datetime` and `deleted: bool` for sync
 - [x] `alembic init`, generate and apply the first migration
 - [x] Seed loader that imports `seed/cards.json` idempotently
-- [ ] `GET /api/cards` — list with filters
-- [ ] `GET /api/queue` — today's queue plus the pre-cap total
-- [ ] `POST /api/review` — body `{card_id, grade, answer_text?}`, returns verdict plus new box and due date
-- [ ] `POST /api/check` — verdict only, no state change (useful for the UI and for demos)
-- [ ] `GET/POST /api/clock` — read and set the offset
-- [ ] `GET /api/export` — full JSON dump
-- [ ] `POST /api/import` — restore from JSON
+- [x] `GET /api/cards` — list with filters
+- [x] `GET /api/queue` — today's queue plus the pre-cap total
+- [x] `POST /api/review` — body `{card_id, grade, answer_text?}`, returns verdict plus new box and due date
+- [x] `POST /api/check` — verdict only, no state change (useful for the UI and for demos)
+- [x] `GET/POST /api/clock` — read and set the offset
+- [x] `GET /api/export` — full JSON dump
+- [x] `POST /api/import` — restore from JSON
 - [x] Confirm the auto-generated docs render at `/docs`
 
-**Where this stands:** the foundation is in — schema, migration, seed loader,
-app skeleton, and `/docs`, all under test. The seven `/api` endpoints are the
-remaining work; `GET /api/health` exists and proves the DB wiring end to end.
+**Where this stands:** complete. Eight endpoints (the seven above plus
+`GET /api/health`), 46 endpoint tests, and the full flow verified against a
+running server — seed, queue, check, review, travel 60 days, export, restore.
+Two bugs were found and fixed on the way: seeded cards had a null `due_date` so
+the queue was empty forever (D18), and a restore into an empty database dropped
+the clock offset (D17).
 
 **Exit criterion:** the full flow works through `/docs` with no frontend at all.
 

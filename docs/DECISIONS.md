@@ -124,23 +124,24 @@ workbook must leave them unchanged.
   those two plus `reference` / `language`. When Phase 3 adds the DB, this splits
   into the two tables the checklist describes.
 
-## D9 — `storage.py` is a deliberate exception to Phase 1's "zero I/O"
+## D9 — `storage.py` was a deliberate exception to Phase 1's "zero I/O"
 
-- **Status:** Decided
-- **Context:** Phase 1 is meant to be five pure modules that touch no disk,
-  network, or framework.
-- **Decision:** `src/scripture_memory_trainer/storage.py` does plain JSON file
-  I/O (no framework, no DB driver — so the Phase 1 *exit criterion* still holds)
-  and is kept strictly separate from the five pure files. It exists to back a
-  future terminal driver and to prototype the Phase 3 seed loader / export.
-  Nothing in the pure modules imports it.
-- **Phase 2 addendum:** covering it turned up a real bug. `save_state` writes
-  `"due_date": null` for a card that was never scheduled, and `load_state` passed
-  that straight to `date.fromisoformat`, which raises `TypeError` — so a state
-  file containing any unscheduled card could not be reloaded. Fixed: such a card
-  keeps its box and is treated as due now.
-  `tests/test_storage.py::test_a_saved_card_with_no_due_date_loads_as_due_now`
-  pins it.
+- **Status:** **Superseded by Phase 3** — the module has been removed
+- **Original decision:** `src/scripture_memory_trainer/storage.py` did plain
+  JSON file I/O (no framework, no DB driver — so the Phase 1 *exit criterion*
+  still held), kept strictly separate from the five pure files. It existed to
+  back a future terminal driver and to prototype the Phase 3 seed loader and
+  export. Nothing in the pure modules imported it.
+- **Phase 2 addendum (kept for the record):** covering it turned up a real bug.
+  `save_state` wrote `"due_date": null` for a card that was never scheduled, and
+  `load_state` passed that straight to `date.fromisoformat`, which raises
+  `TypeError`. The same class of bug then appeared for real in the Phase 3 seed
+  loader — see D18.
+- **Why it is gone:** Phase 3 shipped the thing it was standing in for.
+  `seed.py` is the real seed loader, `GET /api/export` and `POST /api/import`
+  are the real dump and restore, and `database.py` owns persistence. Keeping a
+  second, parallel state format would mean two ways to save that could disagree.
+  Removed along with `tests/test_storage.py`.
 
 ## D10 — zh traditional-vs-simplified is a **third** expected failure
 
@@ -300,6 +301,53 @@ every intermediate box, interval and due date.
   whose content is byte-identical is left completely alone — bumping its
   `updated_at` would manufacture sync traffic for a no-op, since Phase 5 pushes
   rows where `updated_at > last_sync_at`.
+
+---
+
+## D17 — `POST /api/import` merges last-write-wins; it does not replace
+
+- **Status:** Decided
+- **Context:** "Restore from JSON" can mean two things: overwrite everything
+  with the file, or merge the file into what is there. Overwriting is simpler
+  and is what most export/import pairs do.
+- **Decision:** merge, row by row, last-write-wins on `updated_at`. An incoming
+  row applies only if it is **strictly newer** than the stored one; equal
+  timestamps and missing timestamps lose.
+- **Why:** restoring a Tuesday backup onto a device that has studied since must
+  not delete Wednesday's work — that is data loss dressed as a feature. Strict
+  `>` also makes import idempotent: re-importing the same file reports all rows
+  skipped and changes nothing, so a nervous user can press the button twice.
+  It is the same merge rule Phase 5's sync needs, written once.
+- **Two corrections found while testing:**
+  1. Restoring into an **empty** database silently dropped the clock offset.
+     `get_app_state()` created the default `AppState` row on the way in, stamped
+     it with `real_now()`, and that fresh timestamp then beat the incoming one.
+     Fixed by reading the row with `session.get` and creating it *from* the
+     payload when it is absent.
+  2. A `card_state` or `review_log` whose `card` is in neither the payload nor
+     the database violates the foreign key. SQLite does not enforce it by
+     default and Postgres does, so this would have passed every local test and
+     500ed in production. Orphans are now skipped and counted on both backends.
+- **Also:** an export whose `version` is newer than this build understands is
+  rejected rather than partially applied.
+
+## D18 — A seeded card is due immediately, never null
+
+- **Status:** Decided — **bug found and fixed**
+- **Context:** `seed_cards` created each `CardState` with SQLModel's defaults,
+  which left `due_date` null.
+- **The bug:** `build_queue` filters on `due_date <= today`, and null satisfies
+  nothing. A freshly seeded install therefore showed **an empty queue forever**
+  — every card present, none reviewable. `GET /api/health` reported 32 cards and
+  32 states, so nothing looked wrong.
+- **Why the suite missed it:** the API test fixture seeded the cards and then
+  set their due dates itself before handing the client over. It was testing a
+  database no user would ever have. The fixture now seeds and does nothing else,
+  and `test_a_freshly_seeded_install_is_reviewable_immediately` asserts the
+  queue is non-empty straight after a seed.
+- **Decision:** a new `CardState` is created at box 0, due on the **app** date
+  (so a seed run while time-travelled behaves consistently). Re-seeding still
+  never touches an existing state — D16 is unchanged.
 
 ---
 

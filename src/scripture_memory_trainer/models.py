@@ -1,9 +1,10 @@
-"""The one shared data type for Phase 1: a card that knows its own box.
+"""The data type the pure logic speaks: a card that knows its own box.
 
-Phase 3 of the checklist splits this into separate ``Card`` / ``CardState``
-SQLModel tables (state broken out for sync bookkeeping). Until a database
-exists, ``box`` and ``due_date`` live on the card itself. See
-``docs/DECISIONS.md`` (D8).
+Phase 3 split persistence into the ``Card`` / ``CardState`` tables in
+``tables.py``, so this dataclass is now the *view* the logic works with rather
+than the storage shape -- ``service.to_domain()`` joins the two tables back into
+one of these before handing it to ``queue.build_queue()``. Keeping the pure
+modules on a plain dataclass is what keeps SQLAlchemy out of them (D8, D13).
 """
 
 from __future__ import annotations
