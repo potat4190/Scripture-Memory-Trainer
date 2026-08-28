@@ -48,7 +48,12 @@ def check(card_text: str, user_input: str, lang: str) -> Verdict:
     input_units = _split(norm_input, lang)
     total = len(card_units)
 
-    if norm_card == norm_input:
+    # Exact match is decided on the *unit* lists, not the normalized strings.
+    # For zh the units are characters and spacing is not a unit, so an answer
+    # that differs from the card only in spacing is still exact. For the word
+    # languages the two tests are equivalent, since `split()` already discards
+    # the whitespace that `normalize` has collapsed. See DECISIONS D12.
+    if card_units == input_units:
         return Verdict(status="correct", matched=total, total=total, unit=unit)
 
     matched = 0

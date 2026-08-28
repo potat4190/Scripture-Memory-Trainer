@@ -2,8 +2,8 @@
 
 The five Phase 1 modules (``clock``, ``scheduler``, ``normalizer``, ``checker``,
 ``queue``) do no I/O and import no framework. ``models`` holds the one shared
-data type; ``storage`` is a separate, deliberately-impure helper for a future
-terminal driver.
+data type; ``storage`` is a separate, deliberately-impure JSON helper that
+prototypes the Phase 3 seed loader and export (see ``docs/DECISIONS.md`` D9).
 """
 
 from __future__ import annotations
@@ -25,8 +25,3 @@ __all__ = [
     "next_due",
     "normalize",
 ]
-
-
-def main() -> None:
-    """Placeholder entry point. The real terminal driver arrives with a UI phase."""
-    print("Scripture Memory Trainer -- Phase 1 logic only; no interface yet.")

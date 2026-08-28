@@ -1,7 +1,7 @@
 [project]
 name = "scripture-memory-trainer"
 version = "0.1.0"
-description = "Add your description here"
+description = "Multi-script scripture memorisation: Leitner scheduling, Unicode-aware answer checking, and a travellable clock."
 readme = "README.md"
 authors = [
     { name = "Rhidaya Shrestha", email = "rhidayash@gmail.com" }
@@ -16,9 +16,6 @@ dependencies = [
     "regex>=2026.7.19",
     "sqlmodel>=0.0.39",
 ]
-
-[project.scripts]
-scripture-memory-trainer = "scripture_memory_trainer:main"
 
 [build-system]
 requires = ["uv_build>=0.12.7,<0.13.0"]
@@ -49,6 +46,10 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 # The normalizer's whole job is handling confusable characters; RUF001-003
 # would flag every Arabic letter and full-width form it deliberately names.
 "src/scripture_memory_trainer/normalizer.py" = ["RUF001", "RUF002", "RUF003"]
+# Same reason: these tests name curly quotes, full-width forms and Arabic and
+# Devanagari marks on purpose -- that is the behaviour under test.
+"tests/test_normalizer.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/test_properties.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

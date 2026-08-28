@@ -35,7 +35,8 @@ def load_seed_cards(seed_path: Path) -> list[Card]:
 def load_state(state_path: Path, cards: list[Card], today: date) -> tuple[int, list[str] | None]:
     """Merge persisted box / due_date onto ``cards`` in place.
 
-    Cards not yet in the state file start at box 0, due immediately. Returns
+    Cards not yet in the state file start at box 0, due immediately; so does a
+    saved card whose ``due_date`` is null, except that it keeps its box. Returns
     ``(offset_days, language_filter)``.
     """
     offset_days = 0
@@ -55,7 +56,11 @@ def load_state(state_path: Path, cards: list[Card], today: date) -> tuple[int, l
             card.due_date = today
         else:
             card.box = int(saved["box"])
-            card.due_date = date.fromisoformat(saved["due_date"])
+            # A saved card can carry a null due_date -- `save_state` writes one
+            # for any card that was never scheduled. Keep its box; treat it as
+            # due now rather than crashing on `fromisoformat(None)`.
+            saved_due = saved.get("due_date")
+            card.due_date = date.fromisoformat(saved_due) if saved_due else today
 
     return offset_days, language_filter
 

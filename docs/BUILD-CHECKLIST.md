@@ -6,16 +6,16 @@ Sequenced so that the hardest, most graded work happens first and everything aft
 
 ## Phase 0 — Setup and spec extraction
 
-- [ ] `uv init` and create the project skeleton
-- [ ] `uv add fastapi pydantic sqlmodel alembic regex "psycopg[binary]" python-dotenv`
-- [ ] `uv add --dev pytest pytest-cov hypothesis ruff mypy "uvicorn[standard]" pre-commit`
-- [ ] `git init`, push to GitHub, make the repo **public** (free Actions minutes)
-- [ ] Add `.gitignore`, `ruff` config in `pyproject.toml`, `.pre-commit-config.yaml`
-- [ ] **Extract `B_Cards` to `seed/cards.json`** — 32 rows, fields: `card_id`, `reference`, `language`, `direction`, `text`
-- [ ] **Extract `B_Check_Schedule` to `tests/fixtures/check_schedule.json`** — 8 traces, fields: `grades[]`, `expected_box`, `expected_due`
-- [ ] **Extract `B_Check_Answers` to `tests/fixtures/check_answers.json`** — 22 cases, fields: `reference`, `lang`, `input`, `expected_verdict`
-- [ ] Copy input strings from the source cells verbatim; do **not** retype them. Retyping destroys the exact codepoints the cases test.
-- [ ] Create `docs/DECISIONS.md` with an empty decision log
+- [x] `uv init` and create the project skeleton
+- [x] `uv add fastapi pydantic sqlmodel alembic regex "psycopg[binary]" python-dotenv`
+- [x] `uv add --dev pytest pytest-cov hypothesis ruff mypy "uvicorn[standard]" pre-commit`
+- [x] `git init`, push to GitHub, make the repo **public** (free Actions minutes)
+- [x] Add `.gitignore`, `ruff` config in `pyproject.toml`, `.pre-commit-config.yaml`
+- [x] **Extract `B_Cards` to `seed/cards.json`** — 32 rows, fields: `card_id`, `reference`, `language`, `direction`, `text`
+- [x] **Extract `B_Check_Schedule` to `tests/fixtures/check_schedule.json`** — 8 traces, fields: `grades[]`, `expected_box`, `expected_due`
+- [x] **Extract `B_Check_Answers` to `tests/fixtures/check_answers.json`** — 22 cases, fields: `reference`, `lang`, `input`, `expected_verdict`
+- [x] Copy input strings from the source cells verbatim; do **not** retype them. Retyping destroys the exact codepoints the cases test.
+- [x] Create `docs/DECISIONS.md` with an empty decision log
 
 **Exit criterion:** the fixtures exist and load. You have not written a line of logic yet, and that is correct.
 
@@ -27,51 +27,51 @@ Nothing in this phase touches a database, a network, or a framework. Every funct
 
 ### `src/clock.py`
 
-- [ ] `Clock` class holding `offset_days: int`
-- [ ] `Clock.today() -> date` returns `date.today() + timedelta(days=offset_days)`
-- [ ] **Grep the whole repo for `date.today()` and `datetime.now()`.** Every call outside `clock.py` is a bug.
+- [x] `Clock` class holding `offset_days: int`
+- [x] `Clock.today() -> date` returns `date.today() + timedelta(days=offset_days)`
+- [x] **Grep the whole repo for `date.today()` and `datetime.now()`.** Every call outside `clock.py` is a bug.
 
 ### `src/scheduler.py`
 
-- [ ] `INTERVALS = {0:0, 1:1, 2:3, 3:7, 4:21, 5:60}`
-- [ ] `apply_grade(box, grade) -> (new_box, interval_days)`
-- [ ] `again` → box 0, interval 0
-- [ ] `hard` → box unchanged, `max(1, INTERVALS[box] * 60 // 100)` — floor, then floor at 1
-- [ ] `good` → `min(5, box + 1)`, interval of the **new** box
-- [ ] `easy` → `min(5, box + 2)`, interval of the **new** box
-- [ ] `next_due(review_date, interval) -> date`
+- [x] `INTERVALS = {0:0, 1:1, 2:3, 3:7, 4:21, 5:60}`
+- [x] `apply_grade(box, grade) -> (new_box, interval_days)`
+- [x] `again` → box 0, interval 0
+- [x] `hard` → box unchanged, `max(1, INTERVALS[box] * 60 // 100)` — floor, then floor at 1
+- [x] `good` → `min(5, box + 1)`, interval of the **new** box
+- [x] `easy` → `min(5, box + 2)`, interval of the **new** box
+- [x] `next_due(review_date, interval) -> date`
 
 ### `src/normalizer.py`
 
-- [ ] `import regex as re` — **not** stdlib `re`
-- [ ] NFC-normalize input first
-- [ ] Curly quotes → straight: U+2018 U+2019 U+201C U+201D
-- [ ] Full-width → ASCII: U+FF0C → `,`, U+FF1B → `;`
-- [ ] Arabic only: strip U+064B–U+0652, U+0640, U+0670
-- [ ] Arabic only: U+0671 → U+0627, U+0649 → U+064A
-- [ ] Hindi only: strip U+093C nukta
-- [ ] Chinese: **no** simplified/traditional conversion — assert this in a test so nobody "fixes" it later
-- [ ] Strip all punctuation with `re.sub(r"\p{P}+", "", s)`
-- [ ] Collapse whitespace runs, trim ends
-- [ ] `.casefold()`, not `.lower()`
+- [x] `import regex as re` — **not** stdlib `re`
+- [x] NFC-normalize input first
+- [x] Curly quotes → straight: U+2018 U+2019 U+201C U+201D
+- [x] Full-width → ASCII: U+FF0C → `,`, U+FF1B → `;`
+- [x] Arabic only: strip U+064B–U+0652, U+0640, U+0670
+- [x] Arabic only: U+0671 → U+0627, U+0649 → U+064A
+- [x] Hindi only: strip U+093C nukta
+- [x] Chinese: **no** simplified/traditional conversion — assert this in a test so nobody "fixes" it later
+- [x] Strip all punctuation with `re.sub(r"\p{P}+", "", s)`
+- [x] Collapse whitespace runs, trim ends
+- [x] `.casefold()`, not `.lower()`
 
 ### `src/checker.py`
 
-- [ ] `check(card_text, user_input, lang) -> Verdict`
-- [ ] `Verdict` dataclass: `status`, `matched`, `total`, `mismatch_positions[]`, `missing_from`, `unit` (`words` or `chars`)
-- [ ] Word split for `en`, `ar`, `hi`; character split for `zh`
-- [ ] Positional comparison, 1-based positions in the output
-- [ ] Missing tail: report count and first absent position
-- [ ] Surplus input beyond card length: decide the behaviour, log it in `DECISIONS.md`
-- [ ] `matched == 0` → Incorrect; exact match → Correct; otherwise Partial
+- [x] `check(card_text, user_input, lang) -> Verdict`
+- [x] `Verdict` dataclass: `status`, `matched`, `total`, `mismatch_positions[]`, `missing_from`, `unit` (`words` or `chars`)
+- [x] Word split for `en`, `ar`, `hi`; character split for `zh`
+- [x] Positional comparison, 1-based positions in the output
+- [x] Missing tail: report count and first absent position
+- [x] Surplus input beyond card length: decide the behaviour, log it in `DECISIONS.md`
+- [x] `matched == 0` → Incorrect; exact match → Correct; otherwise Partial
 
 ### `src/queue.py`
 
-- [ ] `build_queue(cards, today, lang_filter) -> list[Card]`
-- [ ] Filter `due_date <= today`
-- [ ] Sort key: `(due_date, box, reference)` — plain **string** sort on reference, not canonical book order
-- [ ] Cap at 20
-- [ ] Return the pre-cap total so the UI can show "20 of 47 due"
+- [x] `build_queue(cards, today, lang_filter) -> list[Card]`
+- [x] Filter `due_date <= today`
+- [x] Sort key: `(due_date, box, reference)` — plain **string** sort on reference, not canonical book order
+- [x] Cap at 20
+- [x] Return the pre-cap total so the UI can show "20 of 47 due"
 
 **Exit criterion:** five modules, no imports of FastAPI or any DB driver.
 
@@ -79,15 +79,15 @@ Nothing in this phase touches a database, a network, or a framework. Every funct
 
 ## Phase 2 — Prove the logic
 
-- [ ] `test_scheduler.py` parametrized over all 8 traces in `check_schedule.json`
-- [ ] `test_normalizer.py` parametrized over all 22 cases in `check_answers.json`
-- [ ] `test_queue.py`: cap of 20, all three sort keys, the alphabetical-not-canonical ordering
-- [ ] `test_clock.py`: offset arithmetic, and that advancing the clock changes the queue
-- [ ] Hypothesis: `normalize(normalize(x)) == normalize(x)` for all inputs, all languages
-- [ ] Hypothesis: normalization never increases word count
-- [ ] Hypothesis: box always lands in 0–5 for any grade sequence
-- [ ] Make the suite emit a machine-readable list of failing CHECK cases (`pytest --tb=no -q` plus a small reporter)
-- [ ] Paste that list into `DECISIONS.md`
+- [x] `test_scheduler.py` parametrized over all 8 traces in `check_schedule.json`
+- [x] `test_normalizer.py` parametrized over all 22 cases in `check_answers.json`
+- [x] `test_queue.py`: cap of 20, all three sort keys, the alphabetical-not-canonical ordering
+- [x] `test_clock.py`: offset arithmetic, and that advancing the clock changes the queue
+- [x] Hypothesis: `normalize(normalize(x)) == normalize(x)` for all inputs, all languages
+- [x] Hypothesis: normalization never increases word count
+- [x] Hypothesis: box always lands in 0–5 for any grade sequence
+- [x] Make the suite emit a machine-readable list of failing CHECK cases (`pytest --tb=no -q` plus a small reporter)
+- [x] Paste that list into `DECISIONS.md`
 
 ### Expect two failures on Matthew 28:19
 
