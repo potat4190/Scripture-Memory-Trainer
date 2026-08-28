@@ -7,28 +7,37 @@ where the data itself forced a call.
 
 Format: one entry per decision. `Status` is `Decided`, `Open`, or `Superseded`.
 
+**Source of truth:** the challenge workbook, `Frontier Commons Fellowship FA26 —
+Build Lane Challenge Data.xlsx`. It is **not tracked in this repo** — keep your
+own copy in `docs/`. `seed/cards.json` and both `tests/fixtures/*.json` are
+generated from it by `tools/extract_fixtures.py`, and those generated files *are*
+tracked, so the repo stands on its own. Re-running the script against the
+workbook must leave them unchanged.
+
 ---
 
 ## D1 — `B_Check_Answers` has 21 rows, not 22
 
-- **Status:** Decided (data constraint, not a choice)
-- **Context:** The checklist and the workbook's own `B_Check_Answers` header say
-  22 cases. The supplied source — `frontiercommonsfa26buildlanedata.md`, a
-  Markdown export of the Google Sheets workbook — contains **21** rows in that
-  table.
+- **Status:** Decided (data constraint, not a choice) — **confirmed against the workbook**
+- **Context:** The checklist and the `B_Check_Answers` preamble both say 22 cases.
+  The sheet itself holds **21** data rows (rows 6–26 under the header at row 5).
+  This was first seen in a Markdown export and has since been re-confirmed by
+  reading the `.xlsx` directly, so it is a property of the workbook, not an
+  artifact of the export.
 - **Decision:** Extract the 21 rows that exist into
-  `tests/fixtures/check_answers.json` and treat 21 as the real count. The 22nd
-  case is not in the data we were given, so it cannot be represented.
+  `tests/fixtures/check_answers.json` and treat 21 as the real count. There is no
+  22nd case to represent.
 - **Consequence:** Any "X of 22" phrasing from the checklist maps to 21 here.
-  README must state this.
+  README states this. `tests/test_fixtures.py` pins the count at 21.
 
 ## D2 — `B_Cards` stored verbatim; Unicode normalization happens at compare time
 
-- **Status:** Decided
-- **Context:** The Arabic verses in the source are **not** in any Unicode normal
-  form — combining marks appear in source order, not canonical
-  (`NFC`) order. An earlier hand-made `seed/cards.json` had silently
-  `NFC`-normalized them.
+- **Status:** Decided — **confirmed against the workbook**
+- **Context:** The Arabic verses in `B_Cards` are **not** in any Unicode normal
+  form — combining marks appear in source order, not canonical (`NFC`) order. An
+  earlier hand-made `seed/cards.json` had silently `NFC`-normalized them.
+  Re-extracting from the `.xlsx` reproduces the current `seed/cards.json`
+  byte-for-byte, so all 32 cards now match their source cells exactly.
 - **Decision:** `seed/cards.json` now holds the card text **exactly** as it
   appears in the workbook cell — no normalization applied at extraction. The
   normalizer (Phase 1) applies `NFC` to both card and input as its first step,
@@ -46,18 +55,25 @@ Format: one entry per decision. `Status` is `Decided`, `Open`, or `Superseded`.
 - **Decision:** Preserve it byte-for-byte from the source. Do not "clean" the
   fixture.
 
-## D4 — Leviticus 19:34 outer-whitespace case: whitespace lost in the export
+## D4 — Leviticus 19:34 outer-whitespace case: padding recovered from the workbook
 
-- **Status:** Decided (data constraint)
-- **Context:** Case 8 (Leviticus 19:34, en — "Trailing and leading whitespace")
-  is meant to carry leading and trailing spaces. Markdown tables cannot represent
-  cell-edge whitespace, so the export collapsed it; the supplied source shows the
-  verse with only normal single-space cell padding.
-- **Decision:** Store the string as the source gives it (no synthetic whitespace
-  re-added — that would be retyping the very thing the case tests). The expected
-  verdict is **Correct** ("outer whitespace is trimmed"); a correct checker
-  returns Correct whether or not the padding survived, so the case still
-  exercises the right verdict.
+- **Status:** **Superseded** — the earlier reading was wrong, and is now fixed
+- **Original context:** Case 8 (Leviticus 19:34, en — "Trailing and leading
+  whitespace") carries leading and trailing spaces. Markdown tables cannot
+  represent cell-edge whitespace, so the Markdown export this fixture was first
+  built from had dropped it. At the time that looked unrecoverable, and the
+  fixture stored the trimmed string.
+- **Correction:** The `.xlsx` preserves the padding — the cell holds three
+  leading and three trailing spaces (190 characters, versus the 184 the export
+  gave). `tools/extract_fixtures.py` now reads the workbook, so the fixture
+  carries the real string.
+- **Decision:** Extract from the `.xlsx`, never from a Markdown rendering of it.
+  `tests/test_fixtures.py::test_outer_whitespace_case_keeps_its_padding` fails if
+  the padding is ever lost again.
+- **Note:** The verdict was **Correct** either way, since trimming a trimmed
+  string is a no-op — so this never masked a checker bug. But the case existed
+  specifically to exercise trimming, and with the padding gone it was not
+  testing anything.
 
 ## D5 — Matthew 28:19 (en): two expected verdicts disagree with `B_Cards`
 
@@ -144,3 +160,29 @@ Format: one entry per decision. `Status` is `Decided`, `Open`, or `Superseded`.
   another due card on the next build. What's still undecided is whether the
   *session driver* (not yet written) re-inserts an `again` card within the
   current session regardless of the cap. Decide when that driver exists.
+
+---
+
+## Consistency audit against the workbook — 2026-08-27
+
+All four Option-B tabs (`B_Cards`, `B_Rules`, `B_Check_Schedule`,
+`B_Check_Answers`) were read straight out of the `.xlsx` and compared against
+this repo. Phase 2–6 items were out of scope.
+
+| Check | Result |
+|---|---|
+| `B_Rules` vs. the implemented rules | consistent — intervals, grade effects, cap, sort order, normalization list, partial-credit split, and text sources all match |
+| `B_Cards` (32 rows) vs. `seed/cards.json` | byte-identical, all 5 fields |
+| `B_Check_Schedule` (8 traces) vs. `check_schedule.json` | identical |
+| `B_Check_Answers` (21 rows) vs. `check_answers.json` | **1 difference — case 8 whitespace, fixed. See D4** |
+| Scheduler vs. the 8 traces | 8/8 exact |
+| Checker vs. the 21 cases | 18/21 exact; 3 known (D5 ×2, D10) |
+
+Every numeric claim the workbook states in prose — "1 of 9 words wrong at
+position 5", "7 of 10 words matched; 3 missing from position 8", "1 word wrong at
+position 2" — was checked against the computed `Verdict`, not just the
+correct/partial/incorrect label. All match except the three in D5 and D10.
+
+At the status level alone (correct / partial / incorrect) the checker agrees on
+20 of 21; only D10 disagrees on the label. D5's two cases carry the right label
+and the wrong counts.

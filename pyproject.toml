@@ -56,4 +56,10 @@ testpaths = ["tests"]
 [tool.mypy]
 python_version = "3.13"
 strict = true
+# tools/ is one-shot tooling, not shipped code, and its only import (openpyxl)
+# is intentionally not a project dependency -- run it with `uv run --with openpyxl`.
 files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = "openpyxl.*"
+ignore_missing_imports = true

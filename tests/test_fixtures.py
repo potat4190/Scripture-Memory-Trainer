@@ -46,8 +46,8 @@ def test_check_schedule_loads() -> None:
 
 
 def test_check_answers_loads() -> None:
-    # The workbook header claims 22 rows; the supplied markdown export contains 21.
-    # See docs/DECISIONS.md.
+    # The B_Check_Answers header claims 22 cases; the sheet holds 21 data rows.
+    # Verified against the workbook itself, not just an export. See DECISIONS D1.
     cases = _load(FIXTURES / "check_answers.json")
     assert len(cases) == 21
     for case in cases:
@@ -55,3 +55,23 @@ def test_check_answers_loads() -> None:
         assert case["lang"] in VALID_LANGS
         assert isinstance(case["input"], str)
         assert case["expected_verdict"]
+
+
+def test_outer_whitespace_case_keeps_its_padding() -> None:
+    """The Leviticus 19:34 case exists to test trimming -- its padding must survive.
+
+    An earlier extraction from a Markdown export silently lost it (DECISIONS D4).
+    Markdown tables cannot represent cell-edge whitespace; the workbook can.
+    """
+    cases = _load(FIXTURES / "check_answers.json")
+    (case,) = [c for c in cases if c["change"] == "Trailing and leading whitespace"]
+    assert case["input"] != case["input"].strip()
+    assert case["input"].startswith("   ")
+    assert case["input"].endswith("   ")
+
+
+def test_empty_string_case_is_actually_empty() -> None:
+    """B_Check_Answers spells this input '(empty string)'; it must extract as ''."""
+    cases = _load(FIXTURES / "check_answers.json")
+    (case,) = [c for c in cases if c["change"] == "Empty string"]
+    assert case["input"] == ""

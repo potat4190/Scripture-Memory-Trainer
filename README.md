@@ -25,9 +25,9 @@ of the phase. See [docs/BUILD-CHECKLIST.md](docs/BUILD-CHECKLIST.md) for the pla
 | 5 | Local-first sync (Supabase, last-write-wins, offline-safe) | not started |
 | 6 | CI, deploy to Vercel, Playwright smoke test | not started |
 
-Checked during review: **8/8** schedule traces, **18/21** answer cases. The three
-exceptions are workbook errors, not checker bugs — see below. Phase 2 turns this
-into a committed test suite.
+Checked against the challenge workbook: **8/8** schedule traces, **18/21** answer
+cases. The three exceptions are workbook errors, not checker bugs — see below.
+Phase 2 turns this into a committed, parametrized test suite.
 
 ---
 
@@ -50,6 +50,7 @@ docs/BUILD-CHECKLIST.md              the sequenced build plan
 docs/DECISIONS.md                    every rule interpretation made so far
 docs/FLOWCHART.md                    9 Mermaid diagrams, lifecycle down to the check pipeline
 docs/TOOLING.md                      why each dependency was chosen; verified reference logic
+tools/extract_fixtures.py            regenerates the three data files from the workbook
 ```
 
 ### The logic
@@ -75,11 +76,22 @@ docs/TOOLING.md                      why each dependency was chosen; verified re
 
 ### The fixtures were extracted, not retyped
 
-`seed/cards.json` and both `tests/fixtures/*.json` files were parsed
-programmatically out of the supplied workbook export. Card and input strings are
-stored with their **exact original codepoints** — including one Arabic case that
-is deliberately not in Unicode NFC form, because that is precisely what the case
-tests. See [docs/DECISIONS.md](docs/DECISIONS.md) D2–D4.
+`seed/cards.json` and both `tests/fixtures/*.json` files are generated straight
+from the challenge workbook by [tools/extract_fixtures.py](tools/extract_fixtures.py).
+The workbook itself is not tracked here; drop your copy into `docs/` and run:
+
+```bash
+uv run --with openpyxl python tools/extract_fixtures.py   # must be a no-op
+```
+
+Card and input strings keep their **exact original codepoints and spacing** —
+including one Arabic case deliberately not in Unicode NFC form, and one English
+case whose leading and trailing spaces are the whole point of the test. Both
+would be destroyed by retyping, and the second was in fact lost by an earlier
+extraction from a Markdown rendering of the workbook, since Markdown tables
+cannot carry cell-edge whitespace. Reading the `.xlsx` recovered it
+([docs/DECISIONS.md](docs/DECISIONS.md) D4); `tests/test_fixtures.py` now fails if
+it is ever dropped again. See D1–D4.
 
 ---
 
@@ -127,9 +139,13 @@ conversion", "every differing character counts", and "`matched == 0` → Incorre
 otherwise Partial" — which land on Partial because the two scripts happen to share
 23 of 30 characters. Details in [docs/DECISIONS.md](docs/DECISIONS.md) D5 and D10.
 
-Separately, the supplied workbook export contains **21** `B_Check_Answers` rows,
-though the tab's own header says 22. The 22nd case is not in the data we were
-given ([docs/DECISIONS.md](docs/DECISIONS.md) D1).
+Note that at the *status* level (correct / partial / incorrect) the checker
+agrees with 20 of 21 cases — only the Chinese one disagrees on the label. The two
+Matthew cases return the right label and different counts.
+
+Separately, `B_Check_Answers` holds **21** data rows though its own preamble says
+22. Confirmed by reading the workbook directly, so there is no 22nd case to pass
+or fail ([docs/DECISIONS.md](docs/DECISIONS.md) D1).
 
 ---
 
