@@ -8,7 +8,19 @@ instance carrying a persisted offset.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
+
+
+def real_now() -> datetime:
+    """The true UTC wall-clock instant, deliberately **ignoring** the offset.
+
+    Sync bookkeeping (``updated_at``, last-write-wins) must use real time. If it
+    followed the app clock, a user who travelled 60 days forward would write rows
+    that win every merge until the real date caught up. Scheduling asks a
+    ``Clock``; sync asks this. Both live here so the "no ``datetime.now()``
+    outside ``clock.py``" rule stays literally true. See DECISIONS D15.
+    """
+    return datetime.now(UTC)
 
 
 @dataclass

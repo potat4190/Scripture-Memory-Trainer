@@ -106,10 +106,10 @@ Every other spot-checked case matches exactly. Do **not** tune your checker to r
 
 ## Phase 3 — Backend
 
-- [ ] `models.py` — SQLModel tables: `Card`, `CardState` (box, due_date, updated_at), `ReviewLog`, `AppState` (clock offset)
-- [ ] Every table gets `updated_at: datetime` and `deleted: bool` for sync
-- [ ] `alembic init`, generate and apply the first migration
-- [ ] Seed loader that imports `seed/cards.json` idempotently
+- [x] SQLModel tables: `Card`, `CardState` (box, due_date, updated_at), `ReviewLog`, `AppState` (clock offset) — in `tables.py`, not `models.py`; see DECISIONS D13
+- [x] Every table gets `updated_at: datetime` and `deleted: bool` for sync
+- [x] `alembic init`, generate and apply the first migration
+- [x] Seed loader that imports `seed/cards.json` idempotently
 - [ ] `GET /api/cards` — list with filters
 - [ ] `GET /api/queue` — today's queue plus the pre-cap total
 - [ ] `POST /api/review` — body `{card_id, grade, answer_text?}`, returns verdict plus new box and due date
@@ -117,7 +117,11 @@ Every other spot-checked case matches exactly. Do **not** tune your checker to r
 - [ ] `GET/POST /api/clock` — read and set the offset
 - [ ] `GET /api/export` — full JSON dump
 - [ ] `POST /api/import` — restore from JSON
-- [ ] Confirm the auto-generated docs render at `/docs`
+- [x] Confirm the auto-generated docs render at `/docs`
+
+**Where this stands:** the foundation is in — schema, migration, seed loader,
+app skeleton, and `/docs`, all under test. The seven `/api` endpoints are the
+remaining work; `GET /api/health` exists and proves the DB wiring end to end.
 
 **Exit criterion:** the full flow works through `/docs` with no frontend at all.
 

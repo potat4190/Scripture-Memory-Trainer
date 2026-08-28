@@ -232,6 +232,77 @@ every intermediate box, interval and due date.
 
 ---
 
+# Phase 3 — Backend
+
+## D13 — SQLModel tables live in `tables.py`, not `models.py`
+
+- **Status:** Decided — supersedes the shape D8 anticipated
+- **Context:** The Phase 3 checklist says "`models.py` — SQLModel tables". But
+  `models.py` already holds the pure `Card` dataclass, and `queue.py` — one of
+  the five Phase 1 modules whose exit criterion is *"no imports of FastAPI or
+  any DB driver"* — imports it. Following the checklist literally would pull
+  SQLAlchemy into the pure logic through that import and quietly break Phase 1.
+- **Decision:** the four SQLModel tables go in `tables.py`. `models.Card` stays
+  a plain dataclass and remains the type the pure logic speaks; the API layer
+  converts between the two. The checklist's *intent* — real tables with real
+  sync columns — is met; only the filename differs, and for a reason.
+- **Enforcement:** `tests/test_phase1_guards.py` now checks the purity of all
+  six pure modules two ways — statically (parsing their imports) and by
+  importing each in a **subprocess**, since by that point the rest of the suite
+  has already loaded SQLModel into the test interpreter and an in-process check
+  would pass vacuously. Reintroducing the import fails 7 tests.
+
+## D14 — `DATABASE_URL`, defaulting to local SQLite
+
+- **Status:** Decided
+- **Context:** Phase 3 needs a database now; Phase 5 needs Supabase Postgres.
+  `psycopg` is already a dependency.
+- **Decision:** one `DATABASE_URL` environment variable, read in
+  `database.py`, defaulting to a SQLite file in the repo root. Clone, `uv sync`,
+  `alembic upgrade head` — no server, no configuration. Phase 5 repoints the
+  same variable and nothing else changes, because every query goes through
+  SQLModel. `alembic.ini`'s `sqlalchemy.url` is deliberately left **empty** and
+  `alembic/env.py` reads the same function, so there is one source of truth and
+  no credentials in a tracked file.
+- **Consequence:** migrations must run on both backends, so
+  `render_as_batch=True` is set — SQLite cannot `ALTER` a column in place.
+
+## D15 — Sync timestamps use real time; only *scheduling* is travellable
+
+- **Status:** Decided
+- **Context:** Every table carries `updated_at` for last-write-wins sync. The
+  app's whole premise is a clock the user can move by 60 days.
+- **Decision:** `updated_at` comes from `clock.real_now()`, which returns real
+  UTC and **ignores** the offset. If sync timestamps followed the app clock, a
+  user who travelled forward would write rows that win every merge until the
+  real date caught up — silent, and unrecoverable without hand-editing. What
+  *is* travellable is `ReviewLog.reviewed_on`, the app date a review happened,
+  so time travel stays visible in the history.
+- **Note:** `real_now()` lives in `clock.py` so the checklist's "no
+  `datetime.now()` outside `clock.py`" rule stays literally true — and
+  `test_only_clock_reaches_for_the_real_time` now enforces that by parsing
+  every module in `src/`, rather than relying on someone remembering to grep.
+- **Follow-on bug this surfaced:** SQLite has no timezone type, so an aware
+  datetime went in and a **naive** one came back — making `stored > real_now()`
+  raise `TypeError`, which is exactly the comparison Phase 5's merge is built
+  on. `tables.UTCDateTime` normalizes both directions so SQLite and Postgres
+  behave identically. Pinned by
+  `tests/test_tables.py::test_timestamps_round_trip_as_aware_utc`.
+
+## D16 — Re-seeding never touches study state
+
+- **Status:** Decided
+- **Context:** The checklist asks for a seed loader that imports
+  `seed/cards.json` "idempotently".
+- **Decision:** card **content** is upserted, so a corrected verse reaches an
+  existing install; `CardState` is only ever *created*, never overwritten, so a
+  re-seed cannot knock a card the user has been studying back to box 0. A row
+  whose content is byte-identical is left completely alone — bumping its
+  `updated_at` would manufacture sync traffic for a no-op, since Phase 5 pushes
+  rows where `updated_at > last_sync_at`.
+
+---
+
 ## Open
 
 - **O1 — `again`-requeued card vs. the daily cap of 20.** `FLOWCHART.md` diagram
