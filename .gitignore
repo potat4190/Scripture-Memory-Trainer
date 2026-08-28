@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Challenge workbook — the supplied source data, kept locally, not tracked.
+# tools/extract_fixtures.py reads it to regenerate seed/cards.json and
+# tests/fixtures/*.json; those generated files ARE tracked, so the repo
+# stands on its own without it.
+docs/*.xlsx
