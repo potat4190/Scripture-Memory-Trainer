@@ -16,6 +16,7 @@ drivable there with no frontend at all.
 from __future__ import annotations
 
 from datetime import timedelta
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, status
@@ -269,6 +270,20 @@ def import_endpoint(session: SessionDep, body: ImportIn) -> ImportOut:
 # convenience: a separate static host would need CORS, credentials on every
 # fetch, and a second thing to deploy. Mounted last so every /api route and
 # /docs is matched first.
-WEB_ROOT = ROOT / "web"
-if WEB_ROOT.is_dir():
+#
+# Two candidate locations, because `ROOT` is derived from this file's path and
+# that only points at the repository when the package is imported from `src/`.
+# A deployment that installs the package into site-packages would resolve
+# `ROOT` there, find no `web/`, and serve a working API with no frontend and no
+# error. Falling back to the working directory -- which Vercel sets to the
+# project root -- covers that case.
+def _web_root() -> Path | None:
+    for candidate in (ROOT / "web", Path.cwd() / "web"):
+        if (candidate / "index.html").is_file():
+            return candidate
+    return None
+
+
+WEB_ROOT = _web_root()
+if WEB_ROOT is not None:
     app.mount("/", StaticFiles(directory=WEB_ROOT, html=True), name="web")

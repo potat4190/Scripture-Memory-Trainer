@@ -436,6 +436,26 @@ dialog::backdrop { background: rgb(10 17 22 / 0.55); }
 <body>
 <a class="skip-link" href="#main">Skip to the review</a>
 
+<!-- If Alpine never loads, `x-cloak` keeps the whole app hidden and the page
+     is blank -- a worse failure than a broken layout, because it looks like
+     nothing went wrong. This says what happened and offers the one thing that
+     still works without any JavaScript at all. -->
+<noscript>
+  <div class="panel" style="margin: var(--space-5) auto; max-inline-size: 34rem;">
+    <h2 style="font-family: var(--display); font-weight: 400;">This app needs JavaScript</h2>
+    <p>The review flow runs in the browser. The API underneath it does not —
+       <a href="/docs">the documentation at /docs</a> drives the whole thing without a page.</p>
+  </div>
+</noscript>
+
+<div id="boot-error" hidden class="panel" style="margin: var(--space-5) auto; max-inline-size: 34rem;">
+  <h2 style="font-family: var(--display); font-weight: 400;">The app could not load its libraries</h2>
+  <p>Alpine.js is served from a CDN, and this browser could not reach it — usually a
+     network block or an offline connection.</p>
+  <p><a href="/docs">The API at /docs</a> still works, and so does
+     <a href="/api/export">exporting your data</a>.</p>
+</div>
+
 <div x-data="trainer()" x-init="boot()" x-cloak>
 
   <header class="masthead">
@@ -763,6 +783,15 @@ function splitUnits(text, lang) {
   const s = text.normalize("NFC").replace(/\p{P}+/gu, "").replace(/\s+/g, " ").trim();
   return lang === "zh" ? Array.from(s.replace(/ /g, "")) : (s ? s.split(" ") : []);
 }
+
+// Alpine removes `x-cloak` once it initialises. If it never arrives, reveal the
+// explanation instead of leaving a blank page.
+setTimeout(() => {
+  if (!window.Alpine) {
+    document.getElementById("boot-error").hidden = false;
+    document.querySelectorAll("[x-cloak]").forEach((el) => el.remove());
+  }
+}, 4000);
 
 function trainer() {
   return {

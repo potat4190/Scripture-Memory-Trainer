@@ -1,0 +1,50 @@
+name: Keepalive
+
+# A free Supabase project pauses after 7 days with no activity, and a paused
+# project fails every query -- so a reviewer opening the link weeks later gets
+# an error rather than an app. One trivial query every 3 days prevents that.
+#
+# GitHub also disables scheduled workflows in repositories with no activity for
+# 60 days. If this repo goes quiet before submission, re-enable it from the
+# Actions tab or run it manually here.
+
+on:
+  schedule:
+    - cron: "17 6 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Touch the database
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the project
+        run: uv sync --frozen
+
+      - name: Query
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning::DATABASE_URL secret is not set, so there is nothing to keep alive."
+            echo "Add it under Settings -> Secrets and variables -> Actions."
+            exit 0
+          fi
+          uv run --frozen python -c "
+          from sqlalchemy import text
+          from sqlmodel import Session
+          from scripture_memory_trainer.database import make_engine
+          engine = make_engine()
+          try:
+              with Session(engine) as session:
+                  print('cards:', session.exec(text('select count(*) from card')).one()[0])
+          finally:
+              engine.dispose()
+          "

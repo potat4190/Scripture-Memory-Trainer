@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      smoke_url:
+        description: "Deployment URL to run the smoke test against (e.g. https://scripture-memory-trainer.vercel.app)"
+        required: false
+        type: string
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: ruff, mypy, pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # Honours .python-version (3.13).
+      - name: Install the project
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run --frozen ruff check .
+
+      - name: Formatting
+        run: uv run --frozen ruff format --check .
+
+      - name: Types
+        run: uv run --frozen mypy
+
+      # No database and no secrets: every test builds its own SQLite file in a
+      # temp directory.
+      - name: Tests
+        run: uv run --frozen pytest -q
+
+      # The report is generated, tracked, and quoted in DECISIONS.md and the
+      # README. If a change moves it, that is a documentation change too.
+      - name: The CHECK-case report is up to date
+        run: git diff --exit-code -- reports/
+
+  smoke:
+    name: Smoke test the deployment
+    if: github.event_name == 'workflow_dispatch' && inputs.smoke_url != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the project and Playwright
+        run: |
+          uv sync --frozen --group smoke
+          uv run --frozen playwright install --with-deps chromium
+
+      - name: Load, travel three days, watch the queue change
+        env:
+          SMOKE_URL: ${{ inputs.smoke_url }}
+        run: uv run --frozen pytest tests/smoke -q

@@ -294,58 +294,95 @@ The checklist calls these out because they are the ones that get skipped:
 
 ## Phase 6 — CI and deploy
 
-### 6.1 Push the work that exists
+### 6.1 Push
 
-Seven commits are sitting on your machine unpushed:
+Everything below assumes `main` is pushed. `git status -sb` should say
+`## main...origin/main` with nothing after it.
 
-```bash
-git push origin main
-```
+### 6.2 GitHub Actions — written, committed, needs nothing from you
 
-Everything below assumes that has happened.
+`.github/workflows/ci.yml` — ruff, ruff format, mypy and pytest on every push
+and pull request. The suite needs no database and no secrets, because every test
+builds its own SQLite file in a temp directory. It also fails if
+`reports/check-report.*` is out of date, since that report is quoted in
+`DECISIONS.md` and the README.
 
-### 6.2 GitHub Actions
+It carries a second job, `smoke`, which runs only from **Actions → CI → Run
+workflow** with a deployment URL pasted in. That is how to run the Playwright
+test against production without installing a browser locally.
 
-`.github/workflows/ci.yml` — ruff, mypy and pytest on every push. The suite
-needs no database (every test builds its own SQLite in a temp directory), so CI
-needs no secrets.
-
-`.github/workflows/keepalive.yml` — cron every 3 days, one trivial query, so
-the free Supabase project never idles into a pause. It needs `DATABASE_URL` as a
-**GitHub Actions secret** (Settings → Secrets and variables → Actions). Note
-that GitHub disables scheduled workflows in repos with no activity for 60 days;
-a paused keepalive is worth a calendar reminder before submission.
-
-I can write both files whenever you say — they need no account, only the push.
+`.github/workflows/keepalive.yml` — cron every 3 days, one trivial query, so the
+free Supabase project never idles into a pause. It needs `DATABASE_URL` as a
+**GitHub Actions secret** (Settings → Secrets and variables → Actions); until
+that exists the job warns and exits green rather than failing every three days.
+Note that GitHub disables scheduled workflows in repositories with no activity
+for 60 days — worth a calendar reminder before submission.
 
 ### 6.3 Vercel
 
+**Vercel's Python support changed, and the older advice you will find in blog
+posts is wrong.** There is no `builds` array, no `routes`, and no `requirements.txt`
+needed. The current runtime reads `pyproject.toml` (with `uv.lock`), detects
+FastAPI from the dependency, and runs the app as a single function.
+
+What this repository already has in place for that:
+
+| File | Why |
+|---|---|
+| `app.py` | Vercel loads a top-level `app` from a fixed set of filenames, and `app.py` is the first it checks. It re-exports `scripture_memory_trainer.api:app` and puts `src/` on the path, so the import works whether or not the project itself is installed. |
+| `vercel.json` | Only for `excludeFiles` — keeping `tests/`, `docs/`, `seed/`, `alembic/` and `tools/` out of the function bundle, per the checklist. Keyed on `app.py`. |
+| `.python-version` | Says `3.13`. Vercel reads it; 3.12, 3.13 and 3.14 are available and 3.12 is the default, so without this file the build would use the wrong one. |
+
+The steps:
+
 1. <https://vercel.com> → **Add New** → **Project** → import the GitHub repo.
-2. **Framework preset:** Other. Vercel does not detect FastAPI.
+2. **Framework preset:** let it detect. It should identify FastAPI from
+   `pyproject.toml`. Do not force "Other".
 3. **Environment variables** (Settings → Environment Variables), for Production
    *and* Preview:
-   - `DATABASE_URL` — the session-pooler URI from 5.2.
-   - `SUPABASE_URL` and `SUPABASE_ANON_KEY` if the frontend reads them from a
-     config endpoint rather than a hardcoded literal.
-4. **`vercel.json`** is required — this is a Python ASGI app, not a Next.js
-   site. It also needs `excludeFiles` to keep `tests/` and `seed/` out of the
-   function bundle, per the checklist.
-5. **Migrations do not run on Vercel.** The build step has no database access
-   and serverless functions must not run migrations on cold start — concurrent
-   invocations would race. Run `alembic upgrade head` from your machine against
-   the production `DATABASE_URL`, or add a manual GitHub Actions job that does
-   it. Same for the seed.
-6. **Cold starts:** a free Vercel Python function that has not been hit in a
-   while takes a few seconds to wake, and Supabase's pooler adds its own
-   connection setup. The first page load after a quiet period is slow. This is
-   worth one sentence in the README so a reviewer does not read it as a bug.
+   - `DATABASE_URL` — the session-pooler URI from 5.2, with the
+     `postgresql+psycopg://` scheme.
+   - `SUPABASE_URL` and `SUPABASE_ANON_KEY` once Phase 5 needs them.
+
+   If `DATABASE_URL` is missing, the app now fails at import with a message
+   saying exactly that, rather than falling back to a SQLite file on a read-only
+   filesystem and failing later in a way that looks like a bug.
+4. **The frontend needs no configuration.** `api.py` mounts `web/` after every
+   route, and Vercel promotes mounted static files to its CDN at build time.
+   Route order is what keeps `/api/*` and `/docs` reaching the function: routes
+   declared *before* a mount win, and all of ours are.
+5. **Migrations do not run on Vercel.** The build has no database access, and
+   running them at cold start would let concurrent invocations race. Run
+   `alembic upgrade head` and `python -m scripture_memory_trainer` from your own
+   machine against the production `DATABASE_URL`.
+6. **Cold starts:** a Python function that has not been hit in a while takes a
+   few seconds to wake, and Supabase's pooler adds its own connection setup. The
+   first load after a quiet period is slow. Worth one sentence in the README so
+   a reviewer does not read it as a bug.
 
 ### 6.4 The smoke test
 
-One Playwright test — load, advance the clock 3 days, confirm the queue
-changes — run against the deployed URL. That single test covers the frontend,
-the API, the database and the clock in one pass, which is why it is the one
-worth having.
+`tests/smoke/test_deployment.py` — load the page, check it booted, put a card
+three days out, click `+1d` three times, and confirm the card is due again while
+the real date has not moved. One test covering the frontend, the API, the
+database and the clock in a single pass.
+
+It skips itself unless `SMOKE_URL` is set, so the default suite stays fast and
+needs no browser. To run it against a deployment:
+
+```bash
+uv sync --group smoke
+uv run playwright install chromium
+SMOKE_URL=https://your-deployment.vercel.app uv run pytest tests/smoke -q
+```
+
+Or from **Actions → CI → Run workflow**, pasting the URL, which needs nothing
+installed locally.
+
+Two things to know before pointing it at production: it **grades a card**, so it
+leaves real review history, and it resets the clock afterwards but a crash
+mid-run could leave the app time-travelled. A preview deployment is the safer
+target.
 
 ### 6.5 Pre-submission checks
 

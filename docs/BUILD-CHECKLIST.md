@@ -185,12 +185,18 @@ parts of the page a backend change could break.
 
 ## Phase 6 — Ship
 
-- [ ] `.github/workflows/ci.yml` — ruff, mypy, pytest on every push
-- [ ] `.github/workflows/keepalive.yml` — cron every 3 days, trivial Supabase query
+- [x] `.github/workflows/ci.yml` — ruff, mypy, pytest on every push
+- [x] `.github/workflows/keepalive.yml` — cron every 3 days, trivial Supabase query
 - [ ] Connect the repo to Vercel, set env vars (Supabase URL and anon key)
 - [ ] Verify the production deploy and the auto-generated `/docs`
-- [ ] One Playwright smoke test: load → advance clock 3 days → queue changes
-- [ ] Custom `vercel.json` `excludeFiles` to keep `tests/` and `seed/` out of the function bundle
+- [x] One Playwright smoke test: load → advance clock 3 days → queue changes
+- [x] Custom `vercel.json` `excludeFiles` to keep `tests/` and `seed/` out of the function bundle
+
+**Where this stands:** the account-free half is done — `ci.yml`, `keepalive.yml`,
+`vercel.json` and the root `app.py` entrypoint are committed, and the Playwright
+smoke test has been run against the real app served through that exact
+entrypoint. What is left needs a Vercel account: the import, the environment
+variables, and verifying the production deploy. See `docs/DEPLOYMENT.md` 6.3.
 
 ### README — this is graded
 

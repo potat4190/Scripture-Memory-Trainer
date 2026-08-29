@@ -25,8 +25,26 @@ load_dotenv(ROOT / ".env")
 
 
 def database_url() -> str:
-    """The configured database URL, or the local SQLite default."""
-    return os.environ.get("DATABASE_URL") or DEFAULT_SQLITE_URL
+    """The configured database URL, or the local SQLite default.
+
+    On Vercel there is no local SQLite default to fall back to: the filesystem
+    is read-only apart from ``/tmp``, which is discarded between invocations.
+    Falling through would give a confusing "unable to open database file" on the
+    first query, or -- worse -- a database that silently empties itself. Fail at
+    import instead, with the fix in the message.
+    """
+    configured = os.environ.get("DATABASE_URL")
+    if configured:
+        return configured
+    if os.environ.get("VERCEL"):
+        raise RuntimeError(
+            "DATABASE_URL is not set. This deployment has no usable local "
+            "database -- Vercel's filesystem is read-only apart from /tmp, and "
+            "/tmp does not survive between requests. Set DATABASE_URL to your "
+            "Postgres connection string under Project Settings -> Environment "
+            "Variables, for Production and Preview."
+        )
+    return DEFAULT_SQLITE_URL
 
 
 def make_engine(url: str | None = None, poolclass: type[Pool] | None = None) -> Engine:
