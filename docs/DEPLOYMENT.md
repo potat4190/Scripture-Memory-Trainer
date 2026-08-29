@@ -18,11 +18,14 @@ read-only apart from `/tmp`, and `/tmp` is per-invocation. A SQLite file there
 would appear empty on the next request. Postgres is not optional once you
 deploy — it is the reason Phase 5 comes before Phase 6.
 
-**2. The schema has no owner column yet.** `Card`, `CardState`, `ReviewLog` and
-`AppState` carry `updated_at` and `deleted`, which is what sync needs, but there
-is no `user_id`. Row-level security has nothing to filter on until you add one.
-That migration is step 5.4 below and it is the largest single piece of work left
-in the project — plan for it rather than discovering it.
+**2. The schema assumes there is exactly one user.** `Card`, `CardState`,
+`ReviewLog` and `AppState` carry `updated_at` and `deleted`, which is what sync
+needs, but nothing carries an owner — and it is worse than a missing column.
+`CardState` is keyed on `card_id` alone, so two accounts studying the same verse
+collide on the primary key, and `AppState` is a single pinned row, so one user
+travelling forward in time moves everyone's app date. Step 5.4 is that migration
+and it is the largest single piece of work left in the project. Plan for it
+rather than discovering it.
 
 **3. Free Supabase projects pause after 7 days with no activity.** A paused
 project fails every query, so a reviewer opening your link three weeks from now
@@ -89,40 +92,125 @@ that `.env` is being read.
 
 ### 5.4 Add ownership to the schema (the real work)
 
-Row-level security filters rows by user. Right now there is no user on a row.
+Row-level security filters rows by user. Right now no row has a user.
 
-1. **Add the column** to each of the four tables in `tables.py`:
+**An earlier draft of this section said "add a nullable `user_id` to each of the
+four tables". That was wrong, and understated the work.** Two of the four tables
+are keyed on the assumption that there is exactly one user, and no amount of
+adding columns fixes a primary key.
+
+#### 5.4.1 What is broken by a second user, regardless of any decision
+
+| Table | Primary key today | Why it breaks | Fix |
+|---|---|---|---|
+| `cardstate` | `card_id` | Two accounts both studying `John_3-16_en` collide on the same key | PK becomes `(user_id, card_id)` |
+| `appstate` | `id`, pinned to `1` | One singleton row holds `offset_days`, so one user travelling forward moves **everyone's** app date | PK becomes `user_id`; drop the `APP_STATE_ID` singleton |
+| `reviewlog` | surrogate `id` | nothing — a surrogate key already allows many rows per card | add `user_id` + index |
+| `card` | `card_id` | depends on the decision below | see 5.4.2 |
+
+The `appstate` one is worth pausing on. It is not a theoretical collision: the
+clock offset is the single most demonstrable feature in the app, and today it is
+global. Two reviewers hitting the deployed URL at once would fight over the
+date.
+
+#### 5.4.2 The decision: are the 32 verses shared or per account?
+
+The verses are public-domain scripture from `B_Cards`, identical for every
+account. The choice is what that means for `card`.
+
+| | **Shared** (recommended) | **Duplicated per account** |
+|---|---|---|
+| `card` primary key | unchanged — `card_id`, 32 rows total | becomes `(user_id, card_id)`, 32 x N rows |
+| Primary keys to migrate | 2 | 3 |
+| Fixing a typo in a verse | one seed run reaches everyone | must be applied per account |
+| `seed.py` | unchanged | needs a user argument; runs on every sign-up |
+| First sync per device | 0 card rows | 32 rows of verse text |
+| RLS policies | `card` is the one exception | uniform `auth.uid() = user_id` |
+| A user adding their own verse | needs the hybrid below | already works |
+
+**Decision: shared, with `card.user_id` nullable where NULL means "global".**
+
+That single nullable column costs nothing today — the primary key stays
+`card_id`, the 32 seed rows keep `user_id = NULL`, and the policy reads
+`using (user_id is null or auth.uid() = user_id)`. It buys the one thing pure
+sharing gives up: a user-authored verse is later just an insert with an owner
+and a namespaced `card_id`, rather than another primary-key migration.
+
+Storage is not an argument either way. A thousand accounts of duplicated cards
+is a few megabytes against Supabase's 500 MB free tier. The real costs are the
+extra key migration and the per-account seeding, not the rows.
+
+#### 5.4.3 The trap in the shared option, and the fix
+
+Under sharing, a new account has cards but **no `CardState` rows**. Every
+endpoint that builds a queue goes through `build_queue`, which filters on
+`due_date <= today` — and a card with no state has no due date. A new user would
+sign in to a full deck and an empty queue.
+
+This is D18 wearing a different hat: the same "seeded but invisible" failure,
+arriving through a different door.
+
+Two fixes, and the second is better:
+
+1. Provision 32 `CardState` rows on first sign-in. Works, but it is a
+   registration hook that can fail halfway and leave an account half-seeded.
+2. **Treat missing state as box 0, due today.** `service.to_domain()` already
+   substitutes `box=0` when state is absent; have it substitute the app date for
+   `due_date` as well. A new account then needs no provisioning at all — every
+   card is due, and `CardState` rows appear as cards are graded, which is what
+   `_state_for()` already does.
+
+Option 2 leaves the pure logic untouched: `build_queue` keeps its rule that a
+null due date is not due, and the *service* layer stops handing it nulls. Add a
+test that a user with zero `CardState` rows gets all 32 cards in the queue.
+
+#### 5.4.4 The migration
+
+1. **`tables.py`:**
 
    ```python
+   # card: nullable owner, NULL = global reference data
    user_id: uuid.UUID | None = Field(default=None, index=True)
+
+   # cardstate: composite primary key
+   user_id: uuid.UUID = Field(primary_key=True)
+   card_id: str = Field(primary_key=True, foreign_key="card.card_id")
+
+   # appstate: the user IS the key; APP_STATE_ID goes away
+   user_id: uuid.UUID = Field(primary_key=True)
+
+   # reviewlog: surrogate id stays, owner added
+   user_id: uuid.UUID = Field(index=True)
    ```
 
-   Nullable, because every row that exists today has no owner. A `NOT NULL`
-   column here means writing a data migration for rows you do not yet need to
-   keep.
-
-2. **Generate and review the migration:**
+2. **Generate and read the migration:**
 
    ```bash
-   uv run alembic revision --autogenerate -m "Add user_id for row-level security"
+   uv run alembic revision --autogenerate -m "Per-user ownership and row-level security"
    ```
 
-   Read the generated file before applying it. Autogenerate is good but not
-   trustworthy — it has been known to drop and recreate indexes.
+   Read it before applying. Autogenerate handles added columns well and
+   **primary-key changes badly** — expect to hand-write the `cardstate` and
+   `appstate` steps. `render_as_batch=True` is already set in `alembic/env.py`,
+   which is what lets those run on SQLite as well as Postgres.
 
-3. **Decide what a shared card means.** The 32 seed verses are the same for
-   everyone. Two workable answers:
-   - **Cards are global, state is per user.** `card.user_id` stays null and its
-     RLS policy allows any authenticated read; `cardstate`, `reviewlog` and
-     `appstate` are per user. Less duplication, and a corrected verse reaches
-     everyone.
-   - **Everything is per user**, seeded per account on first sign-in. Simpler
-     policies, 32 duplicate rows per user.
+3. **Existing rows.** Local SQLite data is disposable — drop it and re-seed. If
+   Supabase already has rows by then, decide whether to assign them to your own
+   `auth.uid()` or truncate and re-seed. Truncating is cleaner and there is
+   nothing in there worth keeping yet.
 
-   The first is better and is what the policies below assume. Record whichever
-   you choose in `DECISIONS.md`.
+4. **Code that assumes one user** — the compiler will not find these for you:
 
-4. **Enable RLS and write the policies.** Supabase → SQL Editor:
+   | Location | Today | Becomes |
+   |---|---|---|
+   | `service._state_for` | `session.get(CardState, card_id)` | keyed on `(user_id, card_id)` |
+   | `service.get_app_state` | `session.get(AppState, APP_STATE_ID)` | keyed on `user_id` |
+   | `service.joined_cards` | joins on `card_id` alone | join also on the state's `user_id` |
+   | `service.import_payload` | looks rows up by primary key | same, with the user in the key |
+   | `api.py` | every endpoint | needs the authenticated user injected as a dependency |
+   | `seed.py` | unchanged under sharing | — |
+
+5. **Enable RLS and write the policies.** Supabase - SQL Editor:
 
    ```sql
    alter table card      enable row level security;
@@ -130,9 +218,12 @@ Row-level security filters rows by user. Right now there is no user on a row.
    alter table reviewlog enable row level security;
    alter table appstate  enable row level security;
 
-   -- Cards are shared reference data: any signed-in user may read them.
-   create policy "cards are readable by authenticated users"
-     on card for select to authenticated using (true);
+   -- Verses: global rows (user_id is null) are readable by anyone signed in;
+   -- a user-authored verse is readable only by its author. SELECT only --
+   -- never widen this policy to insert or update, or the shared deck becomes
+   -- writable by every account.
+   create policy "read global and own cards" on card for select to authenticated
+     using (user_id is null or auth.uid() = user_id);
 
    -- Everything else is private to its owner, for every verb.
    create policy "own card state" on cardstate for all to authenticated
@@ -143,11 +234,13 @@ Row-level security filters rows by user. Right now there is no user on a row.
      using (auth.uid() = user_id) with check (auth.uid() = user_id);
    ```
 
-5. **Verify the policies actually bite.** Create two accounts, study different
-   cards on each, and confirm neither can see the other's boxes. A policy that
-   is enabled but never tested is a policy you are guessing about. Note that
-   the `postgres` connection string used by the backend **bypasses RLS** — RLS
-   protects the anon-key path the browser uses, not the service path.
+6. **Verify the policies actually bite.** Create two accounts, study different
+   cards on each, and confirm neither can see the other's boxes or move the
+   other's clock. A policy that is enabled but never tested is a policy you are
+   guessing about. Note that the `postgres` connection string the backend uses
+   **bypasses RLS entirely** — RLS protects the anon-key path the browser takes,
+   not the service path, so the backend must still filter by user in its own
+   queries. RLS is the second lock, not the only one.
 
 ### 5.5 Supabase Auth, email sign-in
 

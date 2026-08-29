@@ -413,6 +413,19 @@ every intermediate box, interval and due date.
   *session driver* (not yet written) re-inserts an `again` card within the
   current session regardless of the cap. Decide when that driver exists.
 
+- **O2 — Per-user ownership, and whether the 32 verses are shared.** Phase 5
+  needs every row to have an owner, which is more than an added column: today
+  `CardState` is keyed on `card_id` alone and `AppState` is a single pinned row,
+  so a second account collides on the first and shares the clock offset on the
+  second. The intended answer is **shared verses** — `card.user_id` nullable,
+  NULL meaning global reference data — which leaves `card`'s primary key alone
+  and still allows user-authored verses later. It carries one trap: a new
+  account has cards but no `CardState`, and `build_queue` treats a null due date
+  as not due, so the queue would be empty. `service.to_domain()` should
+  substitute the app date for missing state rather than the queue changing its
+  rule. Written up in full in `docs/DEPLOYMENT.md` section 5.4. Decide by
+  implementing it; move to a numbered decision then.
+
 ---
 
 ## Consistency audit against the workbook — 2026-08-27
