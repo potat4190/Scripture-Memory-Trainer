@@ -25,8 +25,16 @@ from scripture_memory_trainer.seed import seed_cards
 
 
 @pytest.fixture
-def client(tmp_path: Path) -> Iterator[TestClient]:
-    """A client backed by a throwaway database, never the developer's own."""
+def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    """A client backed by a throwaway database, never the developer's own.
+
+    Two redirections, because there are two ways into the database.
+    `dependency_overrides` covers every endpoint that takes `SessionDep`;
+    `/api/health` deliberately does not (it has to survive a database it cannot
+    reach, which a dependency cannot), so it calls `get_engine` directly and
+    that has to be redirected too. Without the second line, running the suite
+    would quietly query whatever `DATABASE_URL` points at.
+    """
     engine = make_engine(f"sqlite:///{tmp_path / 'api.db'}")
     SQLModel.metadata.create_all(engine)
 
@@ -35,6 +43,7 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
             yield session
 
     app.dependency_overrides[get_session] = override
+    monkeypatch.setattr("scripture_memory_trainer.api.get_engine", lambda: engine)
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -110,6 +119,54 @@ def test_health_counts_seeded_cards(client: TestClient, tmp_path: Path) -> None:
         "cards": 32,
         "card_states": 32,
     }
+
+
+def test_health_reports_an_unreachable_database_instead_of_a_blank_500(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The endpoint whose job is to report a broken database must survive one.
+
+    Before this, `/api/health` took the session as a dependency, so an
+    unreachable database failed *before* the handler ran and the health check
+    returned the same opaque 500 as every other route -- useless exactly when
+    it is needed.
+    """
+    from sqlalchemy.exc import OperationalError
+
+    def explode() -> object:
+        raise OperationalError(
+            "connect", {}, Exception("connection to server at 'db.example' failed")
+        )
+
+    monkeypatch.setattr("scripture_memory_trainer.api.get_engine", explode)
+
+    response = client.get("/api/health")
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "database unavailable"
+    assert body["error"] == "OperationalError"
+    assert "connection to server" in body["detail"]
+
+
+def test_health_never_leaks_the_password_from_an_error(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Connection errors quote the connection string, and that contains the password."""
+    from sqlalchemy.exc import OperationalError
+
+    def explode() -> object:
+        raise OperationalError(
+            "connect",
+            {},
+            Exception("could not connect: postgresql+psycopg://admin:hunter2@host:5432/db"),
+        )
+
+    monkeypatch.setattr("scripture_memory_trainer.api.get_engine", explode)
+
+    body = client.get("/api/health").json()
+    assert "hunter2" not in body["detail"]
+    assert "admin" not in body["detail"]
+    assert "://***:***@" in body["detail"]
 
 
 def test_the_auto_generated_docs_render(client: TestClient) -> None:

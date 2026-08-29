@@ -15,16 +15,18 @@ drivable there with no frontend at all.
 
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, func, select
 
-from .database import ROOT, get_session
+from .database import ROOT, get_engine, get_session
 from .queue import DAILY_CAP, build_queue
 from .schemas import (
     EXPORT_FORMAT,
@@ -91,12 +93,43 @@ def _card_out(card: Card, state: CardState | None) -> CardOut:
     )
 
 
+# A connection string carries a password. Anything derived from a database
+# error is scrubbed before it goes anywhere a person can read it.
+_CREDENTIALS = re.compile(r"://[^:/@\s]+:[^@\s]*@")
+
+
+def _redact(message: str) -> str:
+    return _CREDENTIALS.sub("://***:***@", message)
+
+
 @app.get("/api/health", tags=["meta"])
-def health(session: SessionDep) -> dict[str, object]:
-    """Liveness plus a real query, so a broken DB URL fails here and not mid-review."""
-    session.exec(select(text("1"))).first()
-    cards = session.exec(select(func.count()).select_from(Card)).one()
-    states = session.exec(select(func.count()).select_from(CardState)).one()
+def health(response: Response) -> dict[str, object]:
+    """Liveness plus a real query -- and a usable answer when the database is down.
+
+    Deliberately does *not* take the session dependency. If it did, a database
+    that cannot be reached would blow up in the dependency before the handler
+    ran, and the endpoint whose job is to report the problem would return the
+    same opaque 500 as everything else. Opening the session here means a
+    connection failure is caught, named and returned.
+
+    The message is scrubbed of credentials first: connection errors quote the
+    connection string, and the connection string contains the password.
+    """
+    try:
+        with Session(get_engine()) as session:
+            session.exec(select(text("1"))).first()
+            cards = session.exec(select(func.count()).select_from(Card)).one()
+            states = session.exec(select(func.count()).select_from(CardState)).one()
+    except SQLAlchemyError as exc:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        # `str(exc)` on a connection error is the driver's message plus a link
+        # to SQLAlchemy's docs; the first line is the part that says what broke.
+        detail = _redact(str(exc).strip().splitlines()[0])[:400]
+        return {
+            "status": "database unavailable",
+            "error": type(exc).__name__,
+            "detail": detail,
+        }
     return {"status": "ok", "cards": cards, "card_states": states}
 
 
