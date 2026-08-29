@@ -60,10 +60,28 @@ def make_engine(url: str | None = None, poolclass: type[Pool] | None = None) -> 
     return create_engine(resolved, connect_args=connect_args)
 
 
-engine = make_engine()
+_engine: Engine | None = None
+
+
+def get_engine() -> Engine:
+    """The process-wide engine, built on first use.
+
+    Lazy on purpose. Building it at import time would mean two things on a
+    serverless platform, both bad: a connection pool opened during every cold
+    start whether or not the request touches the database, and -- because
+    ``database_url()`` raises when ``DATABASE_URL`` is missing on Vercel -- a
+    *build* failure rather than a runtime one, since the platform imports the
+    app at build time to discover its routes and static mounts. A missing
+    environment variable should break requests with a clear message, not stop
+    the frontend from being deployed at all.
+    """
+    global _engine
+    if _engine is None:
+        _engine = make_engine()
+    return _engine
 
 
 def get_session() -> Iterator[Session]:
     """FastAPI dependency: one session per request, always closed."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         yield session

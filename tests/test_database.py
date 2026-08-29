@@ -12,12 +12,14 @@ import threading
 from pathlib import Path
 from unittest import mock
 
+import pytest
 from sqlalchemy.pool import NullPool, QueuePool
 from sqlmodel import Session, SQLModel, select
 
 from scripture_memory_trainer.database import (
     DEFAULT_SQLITE_URL,
     database_url,
+    get_engine,
     get_session,
     make_engine,
 )
@@ -76,11 +78,43 @@ def test_make_engine_accepts_a_pool_class(tmp_path: Path) -> None:
         engine.dispose()
 
 
+def test_the_engine_is_built_lazily_not_at_import(tmp_path: Path) -> None:
+    """Import must not open a pool, and must not need DATABASE_URL.
+
+    Vercel imports the app at build time to discover its routes and static
+    mounts. An engine built at import would turn a missing environment variable
+    into a failed *build* -- no frontend deployed at all -- rather than a
+    request that fails with a message naming the variable.
+    """
+    url = f"sqlite:///{tmp_path / 'lazy.db'}"
+    with (
+        mock.patch("scripture_memory_trainer.database._engine", None),
+        mock.patch.dict(os.environ, {"DATABASE_URL": url}),
+    ):
+        first = get_engine()
+        assert get_engine() is first, "the engine is built once and reused"
+        first.dispose()
+
+
+def test_a_missing_database_url_on_vercel_fails_loudly() -> None:
+    """The read-only filesystem there makes the SQLite default a trap, not a default."""
+    with (
+        mock.patch.dict(os.environ, {"VERCEL": "1"}, clear=True),
+        pytest.raises(RuntimeError, match="DATABASE_URL is not set"),
+    ):
+        database_url()
+
+
+def test_a_missing_database_url_anywhere_else_is_just_sqlite() -> None:
+    with mock.patch.dict(os.environ, {}, clear=True):
+        assert database_url() == DEFAULT_SQLITE_URL
+
+
 def test_get_session_yields_a_session_and_closes_it(tmp_path: Path) -> None:
     engine = make_engine(f"sqlite:///{tmp_path / 'x.db'}")
     SQLModel.metadata.create_all(engine)
     try:
-        with mock.patch("scripture_memory_trainer.database.engine", engine):
+        with mock.patch("scripture_memory_trainer.database._engine", engine):
             generator = get_session()
             session = next(generator)
             assert isinstance(session, Session)
