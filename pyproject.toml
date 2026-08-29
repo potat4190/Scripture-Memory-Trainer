@@ -17,6 +17,15 @@ dependencies = [
     "sqlmodel>=0.0.39",
 ]
 
+# Vercel scans for a top-level `app` and, without this, finds two candidates it
+# will not choose between: src/scripture_memory_trainer/api.py and the copy
+# imported by tests/test_api.py. `app.py` at the root is one of the filenames it
+# checks by default, but naming it here makes the choice explicit rather than
+# dependent on scan order -- and it is the same key vercel.json uses under
+# `functions`.
+[tool.vercel]
+entrypoint = "app:app"
+
 [build-system]
 requires = ["uv_build>=0.12.7,<0.13.0"]
 build-backend = "uv_build"
@@ -70,4 +79,11 @@ files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
 module = "openpyxl.*"
+ignore_missing_imports = true
+
+# The smoke group is not installed by default -- `uv sync --frozen` omits it, and
+# CI type-checks in that state. Without this, mypy fails on an import that is
+# supposed to be absent.
+[[tool.mypy.overrides]]
+module = ["playwright.*", "pytest_playwright.*"]
 ignore_missing_imports = true

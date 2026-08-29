@@ -330,6 +330,7 @@ What this repository already has in place for that:
 | File | Why |
 |---|---|
 | `app.py` | Vercel loads a top-level `app` from a fixed set of filenames, and `app.py` is the first it checks. It re-exports `scripture_memory_trainer.api:app` and puts `src/` on the path, so the import works whether or not the project itself is installed. |
+| `[tool.vercel] entrypoint` in `pyproject.toml` | Names `app:app` outright. Without it, Vercel's scanner finds two candidates it will not choose between — `src/scripture_memory_trainer/api.py` and the `app` imported by `tests/test_api.py` — and fails the build with "No FastAPI entrypoint found in default locations". |
 | `vercel.json` | Only for `excludeFiles` — keeping `tests/`, `docs/`, `seed/`, `alembic/` and `tools/` out of the function bundle, per the checklist. Keyed on `app.py`. |
 | `.python-version` | Says `3.13`. Vercel reads it; 3.12, 3.13 and 3.14 are available and 3.12 is the default, so without this file the build would use the wrong one. |
 
@@ -338,6 +339,11 @@ The steps:
 1. <https://vercel.com> → **Add New** → **Project** → import the GitHub repo.
 2. **Framework preset:** let it detect. It should identify FastAPI from
    `pyproject.toml`. Do not force "Other".
+
+   > **If the build says "No FastAPI entrypoint found in default locations":**
+   > the deployment is building a commit that predates `app.py`. Vercel builds
+   > what is on GitHub, not what is on your machine — check the commit hash in
+   > the build log against `git log`, push, and redeploy.
 3. **Environment variables** (Settings → Environment Variables), for Production
    *and* Preview:
    - `DATABASE_URL` — the session-pooler URI from 5.2, with the
