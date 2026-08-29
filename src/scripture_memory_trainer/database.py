@@ -54,10 +54,27 @@ def make_engine(url: str | None = None, poolclass: type[Pool] | None = None) -> 
     run does not leave a connection checked out.
     """
     resolved = url or database_url()
-    connect_args = {"check_same_thread": False} if resolved.startswith("sqlite") else {}
+    if resolved.startswith("sqlite"):
+        connect_args: dict[str, object] = {"check_same_thread": False}
+        pool_options: dict[str, object] = {}
+    else:
+        connect_args = {}
+        # Serverless pointed at a connection pooler needs a small, sceptical
+        # pool. Each function instance gets its own, so the default of five
+        # multiplies by however many instances are warm; and a pooler will drop
+        # an idle connection without telling the client, which surfaces as a
+        # random "server closed the connection unexpectedly" on the next
+        # request unless it is checked first.
+        pool_options = {
+            "pool_size": 1,
+            "max_overflow": 2,
+            "pool_pre_ping": True,
+            "pool_recycle": 300,
+        }
+
     if poolclass is not None:
         return create_engine(resolved, connect_args=connect_args, poolclass=poolclass)
-    return create_engine(resolved, connect_args=connect_args)
+    return create_engine(resolved, connect_args=connect_args, **pool_options)
 
 
 _engine: Engine | None = None

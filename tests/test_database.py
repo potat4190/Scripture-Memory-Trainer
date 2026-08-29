@@ -154,3 +154,27 @@ def test_the_seed_command_fills_a_fresh_database(tmp_path: Path, capsys: object)
             assert len(session.exec(select(CardTable)).all()) == 32
     finally:
         verify.dispose()
+
+
+def test_a_postgres_engine_gets_a_small_pool_that_checks_connections() -> None:
+    """A pooler drops idle connections silently; without pre_ping that surfaces
+    as a random failure on the next request. And each serverless instance holds
+    its own pool, so the default size of five multiplies by however many are warm.
+    """
+    engine = make_engine("postgresql+psycopg://u:p@host:5432/postgres")
+    try:
+        pool = engine.pool
+        assert isinstance(pool, QueuePool)
+        assert pool.size() == 1
+        assert pool._pre_ping is True
+    finally:
+        engine.dispose()
+
+
+def test_a_sqlite_engine_keeps_the_default_pool(tmp_path: Path) -> None:
+    """The pooler settings are for a network database; local SQLite needs none."""
+    engine = make_engine(f"sqlite:///{tmp_path / 'p.db'}")
+    try:
+        assert engine.pool._pre_ping is False
+    finally:
+        engine.dispose()
