@@ -22,6 +22,7 @@ from scripture_memory_trainer.database import (
     get_engine,
     get_session,
     make_engine,
+    normalise_url,
 )
 from scripture_memory_trainer.tables import Card
 
@@ -176,5 +177,41 @@ def test_a_sqlite_engine_keeps_the_default_pool(tmp_path: Path) -> None:
     engine = make_engine(f"sqlite:///{tmp_path / 'p.db'}")
     try:
         assert engine.pool._pre_ping is False
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("given", "expected"),
+    [
+        # What every dashboard hands you, Supabase included.
+        ("postgresql://u:p@host:5432/db", "postgresql+psycopg://u:p@host:5432/db"),
+        # The old Heroku form, which SQLAlchemy refuses outright.
+        ("postgres://u:p@host:5432/db", "postgresql+psycopg://u:p@host:5432/db"),
+        # An explicit driver means what it says, in both directions.
+        ("postgresql+psycopg://u:p@host/db", "postgresql+psycopg://u:p@host/db"),
+        ("postgresql+psycopg2://u:p@host/db", "postgresql+psycopg2://u:p@host/db"),
+        # Everything else is untouched.
+        ("sqlite:///./scripture.db", "sqlite:///./scripture.db"),
+    ],
+)
+def test_a_bare_postgres_url_is_pointed_at_psycopg3(given: str, expected: str) -> None:
+    """Without this, a URL pasted from the dashboard deploys and then fails on the
+    first query with `No module named 'psycopg2'` -- an error naming a package
+    nobody chose, for a reason the message never mentions.
+    """
+    assert normalise_url(given) == expected
+
+
+def test_the_environment_variable_is_normalised_on_the_way_out() -> None:
+    with mock.patch.dict(os.environ, {"DATABASE_URL": "postgresql://u:p@host:5432/db"}):
+        assert database_url() == "postgresql+psycopg://u:p@host:5432/db"
+
+
+def test_a_dashboard_url_builds_a_psycopg3_engine() -> None:
+    """The end of the chain: the pasted value produces a working dialect."""
+    engine = make_engine("postgresql://u:p@host:5432/db")
+    try:
+        assert engine.dialect.driver == "psycopg"
     finally:
         engine.dispose()

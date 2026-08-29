@@ -24,6 +24,26 @@ DEFAULT_SQLITE_URL = f"sqlite:///{ROOT / 'scripture.db'}"
 load_dotenv(ROOT / ".env")
 
 
+def normalise_url(url: str) -> str:
+    """Point a bare Postgres URL at psycopg 3, the driver this project installs.
+
+    Supabase (and Render, and Heroku, and every other dashboard) hands out
+    `postgresql://...`. SQLAlchemy reads a URL with no driver as psycopg **2**,
+    which is not a dependency here, so the app deploys fine and then fails on
+    the first query with `ModuleNotFoundError: No module named 'psycopg2'` --
+    an error that says nothing about the URL that caused it.
+
+    Rewriting it here means the value copied straight from the dashboard works.
+    An explicit driver is always left alone, so `postgresql+psycopg2://` still
+    means what it says.
+    """
+    if url.startswith("postgres://"):  # the old Heroku form; SQLAlchemy rejects it outright
+        url = f"postgresql://{url.removeprefix('postgres://')}"
+    if url.startswith("postgresql://"):
+        return f"postgresql+psycopg://{url.removeprefix('postgresql://')}"
+    return url
+
+
 def database_url() -> str:
     """The configured database URL, or the local SQLite default.
 
@@ -35,7 +55,7 @@ def database_url() -> str:
     """
     configured = os.environ.get("DATABASE_URL")
     if configured:
-        return configured
+        return normalise_url(configured)
     if os.environ.get("VERCEL"):
         raise RuntimeError(
             "DATABASE_URL is not set. This deployment has no usable local "
@@ -53,7 +73,11 @@ def make_engine(url: str | None = None, poolclass: type[Pool] | None = None) -> 
     ``poolclass`` exists for Alembic, which wants ``NullPool`` so a migration
     run does not leave a connection checked out.
     """
-    resolved = url or database_url()
+    # Normalised here as well as in `database_url()`, because this is the one
+    # place the URL is actually used -- an explicitly passed URL (Alembic, the
+    # tests, a script) has to get the same treatment. `normalise_url` is
+    # idempotent, so applying it twice costs nothing.
+    resolved = normalise_url(url or database_url())
     if resolved.startswith("sqlite"):
         connect_args: dict[str, object] = {"check_same_thread": False}
         pool_options: dict[str, object] = {}

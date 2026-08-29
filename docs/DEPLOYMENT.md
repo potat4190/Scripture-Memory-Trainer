@@ -368,18 +368,25 @@ The steps:
    > the build log against `git log`, push, and redeploy.
 3. **Environment variables** (Settings → Environment Variables), for Production
    *and* Preview:
-   - `DATABASE_URL` — from Supabase → **Connect** → **Session pooler**, with
-     the scheme changed from `postgresql://` to `postgresql+psycopg://`. It
-     looks like:
+   - `DATABASE_URL` — from Supabase → **Connect** → **Session pooler**. Paste
+     it as-is; `database.normalise_url()` rewrites a bare `postgresql://` (and
+     the old `postgres://`) to `postgresql+psycopg://` for you. Without that,
+     SQLAlchemy reads a driverless URL as psycopg **2**, which is not a
+     dependency here, and the app deploys fine and then fails on the first
+     query with `ModuleNotFoundError: No module named 'psycopg2'` — an error
+     naming a package nobody chose. It looks like:
 
      ```
      postgresql+psycopg://postgres.vizlsfpaaxwnolhdnkme:PASSWORD@aws-0-us-west-2.pooler.supabase.com:5432/postgres
      ```
 
      Copy the host from the dashboard rather than trusting that line — pooler
-     hostnames vary. **Use the pooler, not the direct `db.*.supabase.co` host:**
-     that one is IPv6-only on the free tier and Vercel functions cannot reach
-     it, which fails in a way that looks like bad credentials.
+     hostnames vary. **Use the shared pooler, not the direct
+     `db.*.supabase.co` host:** the direct endpoint and the *dedicated* pooler
+     are IPv6-only, and Vercel functions cannot reach them, which fails in a
+     way that looks like bad credentials. The shared pooler accepts IPv4 by
+     default, so the "Dedicated IPv4 address" add-on ($4/month, Pro plan) is
+     **not** needed — stay on "No IPv4 address".
 
      Session pooler (5432) is the right choice at this scale. The transaction
      pooler (6543) suits serverless better under load, but psycopg issues
