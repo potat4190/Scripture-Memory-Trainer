@@ -1,138 +1,106 @@
 # Scripture Memory Trainer
 
-A spaced-repetition trainer for memorizing scripture in four languages — English,
-Chinese, Arabic, and Hindi — with a Leitner-box scheduler, a Unicode-aware
-answer checker, and a time-travel clock so a reviewer can advance the date by any
-number of days without touching code.
+Type a verse from memory, in any of four scripts, and find out exactly where you
+went wrong — then let a Leitner scheduler decide when you see it again.
 
 **Live: <https://scripture-memory-trainer-lemon.vercel.app>** — no sign-in, no
-account. Open it, study a verse in Arabic, then press **+30d** in the header and
-watch the schedule respond.
+account.
+
+> The first load after a quiet spell takes a few seconds: a free Vercel Python
+> function has to wake and Supabase's connection pooler has to open. That is
+> cold start, not a hang.
 
 Frontier Commons Fellowship FA26 — Build Lane, Option B.
 
-> The first load after a quiet spell takes a few seconds: a free Vercel Python
-> function has to wake and Supabase's pooler has to open a connection. That is
-> cold start, not a hang.
+---
+
+## What it does
+
+Eight verses in English, Chinese, Arabic and Hindi — 32 cards. You get the
+reference; you type the verse. The checker compares your answer to the card
+position by position and tells you which word was wrong, which ones you never
+reached, and how many you typed past the end. Grade yourself Again / Hard /
+Good / Easy and the card moves through six Leitner boxes on a
+`0 → 1 → 3 → 7 → 21 → 60` day ladder.
+
+Three things make it more than a flashcard app:
+
+**Comparison is Unicode-aware, per language.** Capitalisation, punctuation and
+repeated whitespace never count. Arabic diacritics are optional and alef forms
+are normalised; the Hindi nukta is optional. Chinese is compared per character,
+and traditional is deliberately **not** folded into simplified — if the card is
+simplified, traditional input is wrong, because that is the rule.
+
+**The interface is genuinely multi-script.** `lang` and `dir` are set per
+element from the card, not once on the page, so a right-to-left Arabic card and
+a left-to-right Hindi card can sit in the same list without breaking. Every
+inline edge in the stylesheet is a logical property — `margin-inline`,
+`text-align: start` — because half these verses run the other way. A test fails
+the build on `margin-left`.
+
+**The clock travels.** Every date in the app comes from an offset the app
+persists, so you can press +30d and watch the schedule respond without waiting
+a month or touching the code. That single feature is what makes a spaced
+repetition system demonstrable at all.
 
 ---
 
-## Status
-
-**Phase 4 complete — there is an app.** The pure logic is pinned by every
-fixture the workbook supplies, the whole flow runs over HTTP, and a single
-static page drives it in four scripts and two writing directions. Sync and
-deployment (Phases 5 and 6) both need third-party accounts and are documented
-in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) rather than half-built. See
-[docs/BUILD-CHECKLIST.md](docs/BUILD-CHECKLIST.md) for the plan.
-
-| Phase | What | State |
-|---|---|---|
-| 0 | Setup, dependency pinning, extract the workbook tabs to fixtures | **done** |
-| 1 | Pure logic — `clock`, `scheduler`, `normalizer`, `checker`, `queue` | **done** |
-| 2 | Lock the logic in with parametrized pytest + Hypothesis | **done** |
-| 3 | FastAPI backend + SQLModel + Alembic | **done** |
-| 4 | Static HTML / Alpine.js frontend, multi-script rendering | **done** |
-| 5 | Local-first sync (Supabase, last-write-wins, offline-safe) | **not started** — needs per-user ownership first; see [DEPLOYMENT.md](docs/DEPLOYMENT.md) 5.4 |
-| 6 | CI, deploy to Vercel, Playwright smoke test | **done** — deployed, CI green, smoke test run against production |
-
-Checked against the challenge workbook: **8/8** schedule traces (verified step by
-step, not just on their end state) and **18/21** answer cases. The three
-exceptions are workbook errors, not checker bugs — see below; they are marked
-`xfail(strict=True)`, so "fixing" the checker to reproduce them turns them into
-failures rather than quiet passes.
-
-`uv run pytest` — **407 passed, 3 xfailed**, and it writes
-`reports/check-report.json` / `.md`, the machine-readable list of which CHECK
-cases deviate and by how much.
-
----
-
-## What is in the repo now
+## How it is built
 
 ```
-src/scripture_memory_trainer/
-  clock.py         injectable Clock: real date + a persisted day offset
-  scheduler.py     Leitner box arithmetic — apply_grade, next_due
-  normalizer.py    Unicode-aware text folding for comparison (uses `regex`, not `re`)
-  checker.py       positional answer checking -> Verdict
-  queue.py         daily review queue: due filter, 3-key sort, cap of 20
-  models.py        the Card dataclass the pure logic speaks
-  tables.py        SQLModel tables: Card, CardState, ReviewLog, AppState (+ sync columns)
-  database.py      engine and per-request session; DATABASE_URL, SQLite by default
-  seed.py          idempotent import of seed/cards.json
-  service.py       what the API does to the database — the rules, minus the routing
-  schemas.py       request/response models; these are what /docs renders
-  api.py           eight endpoints, and it serves the frontend from the same origin
-web/index.html     the whole frontend: one file, no build step
-app.py             deployment entrypoint; Vercel loads `app` from here
-vercel.json        excludeFiles, keeping tests/ and docs/ out of the function bundle
-.github/workflows/ ci.yml (ruff, mypy, pytest) and keepalive.yml (Supabase anti-pause)
-seed/cards.json                     32 verses — 8 references x 4 languages (from B_Cards)
-tests/fixtures/check_schedule.json   8 grade-sequence traces (from B_Check_Schedule)
-tests/fixtures/check_answers.json    21 answer-checking cases (from B_Check_Answers)
-tests/test_fixtures.py               proves the fixtures load and are well-formed
-tests/test_scheduler.py              all 8 traces, step by step, plus the grade rules
-tests/test_normalizer.py             all 21 CHECK cases + every normalization rule
-tests/test_queue.py                  due filter, 3-key sort, cap of 20, language filter
-tests/test_clock.py                  offset arithmetic, and that the clock moves the queue
-tests/test_properties.py             Hypothesis: idempotence, word count, box bounds
-tests/test_phase1_guards.py          the invariants nobody may "helpfully" fix
-tests/test_tables.py                 schema shape, sync columns, seed idempotency
-tests/test_api.py                    every endpoint, plus the whole flow end to end
-tests/test_web_contract.py           what the page duplicates from the backend, pinned
-tests/test_service.py                the merge rules, including last-write-wins overwrites
-tests/smoke/test_deployment.py       one Playwright test against a deployed URL
-tests/test_database.py               engine construction and session lifetime
-tests/conftest.py                    fixture loading + the CHECK-case deviation reporter
-reports/check-report.{json,md}       generated by the suite: which CHECK cases deviate
-alembic/                             migration environment and versions
-docs/BUILD-CHECKLIST.md              the sequenced build plan
-docs/DECISIONS.md                    every rule interpretation made so far
-docs/FLOWCHART.md                    9 Mermaid diagrams, lifecycle down to the check pipeline
-docs/TOOLING.md                      why each dependency was chosen; verified reference logic
-tools/extract_fixtures.py            regenerates the three data files from the workbook
+web/index.html          One static file. Alpine.js and Dexie from CDN, no build
+   |                    step. Mirrors the database into IndexedDB so an offline
+   |                    load still has a deck to read.
+   |  fetch, same origin — no CORS, one thing to deploy
+   v
+api.py                  Eight endpoints. Routing only.
+   |
+service.py              The rules: what a review does, how a restore merges.
+   |
+   +-- clock, scheduler, normalizer, checker, queue, models
+   |     The pure layer. No framework, no driver, no I/O.
+   |
+tables.py / database.py SQLModel tables, engine, per-request session.
+   v
+Supabase Postgres       Alembic owns the schema. SQLite locally, same code.
 ```
 
-### The logic
+| Tool | Why |
+|---|---|
+| **FastAPI + SQLModel** | One type definition serves the table, the validation and the OpenAPI docs. `/docs` is a working interface, not a byproduct. |
+| **`regex`, not `re`** | Only it supports `\p{P}`, the Unicode punctuation property. That makes "strip punctuation in every script" one line instead of a hand-maintained character list. |
+| **Alembic** | The schema has a history and can move between SQLite and Postgres unchanged. `render_as_batch` so migrations run on both. |
+| **uv** | Locked, reproducible installs; Vercel reads `pyproject.toml` and `uv.lock` directly. |
+| **Alpine + Dexie from CDN** | The frontend is one file a reviewer can read top to bottom. No bundler, no `node_modules`, nothing to build. |
+| **pytest + Hypothesis** | Examples prove the supplied cases; properties prove the shapes those cases imply. |
+| **ruff + mypy strict** | Enforced in CI on every push. |
 
-- **`clock.py`** — the only place in the codebase allowed to call `date.today()`.
-  Everything else asks a `Clock`, which returns `date.today() + offset_days`. That
-  is what makes time travel a one-liner and tests deterministic.
-- **`scheduler.py`** — `INTERVALS = {0:0, 1:1, 2:3, 3:7, 4:21, 5:60}`. `hard` keeps
-  the box and advances by `INTERVALS[box] * 60 // 100` (floored, minimum 1) — so
-  box 4 `hard` is 12 days, not 13, and box 0 `hard` still moves a day.
-- **`normalizer.py`** — NFC, then curly→straight quotes, full-width→ASCII, then
-  per-language rules (Arabic harakat/alef/yeh, Hindi nukta; **no** Chinese
-  simplified↔traditional conversion), then `\p{P}` punctuation strip, whitespace
-  collapse, and `casefold()`.
-- **`checker.py`** — splits into words (`en`, `ar`, `hi`) or characters (`zh`),
-  compares position by position, and returns a `Verdict` with 1-based mismatch
-  positions, the missing tail (count + first absent position), and surplus input
-  reported separately (DECISIONS D6).
-- **`queue.py`** — filters to `due_date <= today`, sorts by
-  `(due_date, box, reference)` with **string** ordering on the reference (not
-  canonical book order), caps at 20, and returns the pre-cap total for a
-  "20 of 47 due" line.
+### The method that mattered most
 
-### The fixtures were extracted, not retyped
+**The logic was built and proven before any framework existed.** `clock`,
+`scheduler`, `normalizer`, `checker`, `queue` and `models` import nothing but
+the standard library and `regex` — no database, no web framework, no I/O. That
+is what let the scheduler be verified against all 8 workbook traces and the
+checker against all 21 answer cases while there was still nothing to hide
+behind. It is enforced rather than hoped for: a test imports each module in a
+**subprocess** and fails if SQLAlchemy or FastAPI has crept in.
 
-`seed/cards.json` and both `tests/fixtures/*.json` files are generated straight
-from the challenge workbook by [tools/extract_fixtures.py](tools/extract_fixtures.py).
-The workbook itself is not tracked here; drop your copy into `docs/` and run:
+**The acceptance data was extracted, never retyped.** `seed/cards.json` and both
+fixture files are generated from the challenge workbook by
+`tools/extract_fixtures.py`, and re-running it must be a no-op. Card and input
+strings keep their exact codepoints and spacing — including one Arabic case
+deliberately not in Unicode NFC form, and one English case whose leading and
+trailing spaces are the entire point of the test. An earlier extraction from a
+Markdown rendering of the workbook silently lost that padding, because Markdown
+tables cannot carry cell-edge whitespace. Reading the `.xlsx` recovered it, and
+a test now fails if it is ever dropped again.
 
-```bash
-uv run --with openpyxl python tools/extract_fixtures.py   # must be a no-op
-```
-
-Card and input strings keep their **exact original codepoints and spacing** —
-including one Arabic case deliberately not in Unicode NFC form, and one English
-case whose leading and trailing spaces are the whole point of the test. Both
-would be destroyed by retyping, and the second was in fact lost by an earlier
-extraction from a Markdown rendering of the workbook, since Markdown tables
-cannot carry cell-edge whitespace. Reading the `.xlsx` recovered it
-([docs/DECISIONS.md](docs/DECISIONS.md) D4); `tests/test_fixtures.py` now fails if
-it is ever dropped again. See D1–D4.
+**421 tests, 99% coverage** on the modules that matter. The scheduler traces are
+asserted step by step, not just on their end state, by parsing the workbook's own
+prose. The answer-case expectations are parsed from the workbook's verdict
+sentences rather than transcribed, so the numbers cannot drift from the source.
+Three properties come straight from the brief: normalisation is idempotent, it
+never increases the word count, and the box always lands in 0–5.
 
 ---
 
@@ -141,168 +109,194 @@ it is ever dropped again. See D1–D4.
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.13.
 
 ```bash
-uv sync                       # create the venv, install everything from uv.lock
-uv run pre-commit install     # ruff lint + format on every commit
-uv run pytest                 # 407 passed, 3 xfailed (the documented workbook errors)
-uv run pytest --tb=no -q      # + writes reports/check-report.{json,md}
-```
-
-Bring up the database and the API:
-
-```bash
-uv run alembic upgrade head          # create the tables (SQLite by default)
-uv run python -m scripture_memory_trainer   # load the 32 cards; safe to re-run
+uv sync
+uv run alembic upgrade head                  # create the tables (SQLite by default)
+uv run python -m scripture_memory_trainer    # load the 32 cards; safe to re-run
 uv run uvicorn scripture_memory_trainer.api:app --reload
 ```
 
-Then open <http://127.0.0.1:8000> for the app, or
-<http://127.0.0.1:8000/docs> for the API. (Or skip all of it and use the
-[live deployment](https://scripture-memory-trainer-lemon.vercel.app).) `DATABASE_URL` overrides the database;
-unset, it uses a local SQLite file. See `.env.example`.
+Then <http://127.0.0.1:8000> for the app, <http://127.0.0.1:8000/docs> for the
+API. `DATABASE_URL` overrides the database; unset, it uses a local SQLite file.
+
+```bash
+uv run pytest              # 421 passed, 3 xfailed (the documented workbook errors)
+uv run ruff check . && uv run mypy
+```
 
 ### Time travel in ten seconds
 
-On the [live app](https://scripture-memory-trainer-lemon.vercel.app): study a
-card, grade it **Easy**, then press **+7d** in the header. The app date moves,
-the real date does not, and the card you just scheduled comes back due.
+Study a card, grade it **Easy**, then press **+7d** in the header. The app date
+moves, the real date does not, and the card you scheduled comes back due.
 
-> A card graded `easy` from box 0 is scheduled 3 days out, which sorts it
-> *last* — behind 31 cards still due today, and outside the daily cap of 20. It
-> is due, just not on the first page. Travel **+7d** or **+30d** and the effect
-> is unmistakable.
+> Use +7d or +30d rather than +1d. A card graded Easy from box 0 is scheduled
+> three days out, which sorts it *last* — behind 31 cards still due today, and
+> outside the daily cap of 20. It is due, just not on the first page.
 
-The same thing from `/docs`, with no frontend at all:
+---
 
-1. `GET /api/queue` — 20 of 32 due today.
-2. `POST /api/review` with `{"card_id": "...", "grade": "easy"}` — the card
-   jumps to box 2 and is scheduled three days out.
-3. `GET /api/queue` — it is gone from today's list.
-4. `POST /api/clock` with `{"advance_days": 3}` — the app date moves; the real
-   date does not.
-5. `GET /api/queue` — it is back, and the schedule responded rather than the
-   calendar.
+## Decisions
 
-The pure logic is importable directly (`from scripture_memory_trainer import
-check, apply_grade, normalize, build_queue, Clock`) and stays free of any
-framework or driver import — a test enforces that.
+The full argument for each is in [docs/DECISIONS.md](docs/DECISIONS.md).
 
-Lint and types:
-
-```bash
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy            # strict
-```
+- **The workbook wins over intuition.** Where a rule-correct implementation
+  disagrees with a stated expected value, the implementation stands and the
+  disagreement is documented. Three cases; see below.
+- **The pure logic layer is inviolable.** Persistence lives in `tables.py`, not
+  `models.py`, specifically so importing the queue cannot drag SQLAlchemy into
+  the logic.
+- **One source of time.** Nothing outside `clock.py` calls `date.today()`. The
+  one deliberate exception is sync bookkeeping, which uses real UTC — otherwise
+  a user who travelled 60 days forward would win every merge.
+- **One `DATABASE_URL`.** SQLite locally, Postgres in production, identical
+  code. A bare `postgresql://` is rewritten to psycopg 3 so the string copied
+  from a dashboard just works.
+- **Same origin.** The API serves the frontend, so there is no CORS, no
+  credential plumbing and one thing to deploy.
+- **Restores merge, never replace.** Import is last-write-wins on `updated_at`,
+  strictly newer only, so restoring an old backup cannot delete newer work and
+  re-importing the same file is a no-op.
+- **Export works without an account, always.** That is the promise that your
+  data is never held hostage.
+- **Surplus input is its own fact.** Typing past the end of the verse is
+  reported separately and never inflates or deflates the match counts, which are
+  always computed from the card's length.
+- **The queue sorts references as plain strings** — alphabetical, not canonical
+  book order, so Isaiah < John < Leviticus. The rules say string; a test stops
+  anyone "helpfully" fixing it.
 
 ---
 
 ## Known discrepancies with the workbook
 
-The brief requires stating which CHECK cases we fail and why. All three below are
-cases where a rule-correct implementation disagrees with the workbook's stated
-expectation; per the brief, `B_Rules` and the supplied text are authoritative, so
-the checker is **not** tuned to reproduce them.
+Three cases where a rule-correct implementation disagrees with the workbook's
+stated expectation. `B_Rules` and the supplied text are authoritative, so the
+checker is **not** tuned to reproduce them. All three are marked
+`xfail(strict=True)`, which means that if someone later "fixes" the checker to
+match, the suite fails rather than going quietly green.
 
 | Case | Workbook expects | This checker computes |
 |---|---|---|
 | Matthew 28:19 (en) — curly apostrophe, `Father's` wrong | 1 word wrong at position **16**, total **22** | position **15**, total **24** |
 | Matthew 28:19 (en) — empty string | 0 of **22** words matched | 0 of **24** words matched |
-| John 3:16 (zh) — traditional against simplified card | **Incorrect** | **Partial** — 23 of 30 characters matched, 7 differ |
+| John 3:16 (zh) — traditional against a simplified card | **Incorrect** | **Partial** — 23 of 30 characters matched, 7 differ |
 
-The two Matthew cases are consistent with the workbook's expected values having
-been computed against a different, shorter text than the 24-word KJV verse in
-`B_Cards`. The Chinese case follows the workbook's own rules — "no script
-conversion", "every differing character counts", and "`matched == 0` → Incorrect,
-otherwise Partial" — which land on Partial because the two scripts happen to share
-23 of 30 characters. Details in [docs/DECISIONS.md](docs/DECISIONS.md) D5 and D10.
+The first two are consistent with the expected values having been computed
+against a 22-word text while `B_Cards` supplies 24. The third follows from the
+rules as written: script conversion is not performed and every differing
+character counts, but these two verses share 23 of 30 characters, so the result
+is Partial rather than a zero-match Incorrect.
 
-Note that at the *status* level (correct / partial / incorrect) the checker
-agrees with 20 of 21 cases — only the Chinese one disagrees on the label. The two
-Matthew cases return the right label and different counts.
-
-Separately, `B_Check_Answers` holds **21** data rows though its own preamble says
-22. Confirmed by reading the workbook directly, so there is no 22nd case to pass
-or fail ([docs/DECISIONS.md](docs/DECISIONS.md) D1).
+Separately, `B_Check_Answers` holds **21** data rows though its own preamble
+says 22 — confirmed by reading the `.xlsx` directly, so there is no 22nd case to
+pass or fail. Running the test suite regenerates
+[reports/check-report.md](reports/check-report.md) with the current list, and a
+test fails if the set of deviating cases ever changes.
 
 ---
 
-## Architecture
+## What is not built, and why
 
-One FastAPI application, deployed as a single Vercel function, serving both the
-API and the frontend from the same origin. Postgres on Supabase holds the data.
-The whole frontend is one static file with no build step.
+**There are no user accounts.** The app is a single shared deck: anyone with the
+URL can grade cards and move the clock, and everyone sees the same state. Fine
+for a demo, wrong for real use.
 
-```
-web/index.html          Alpine + Dexie from CDN. Mirrors the four tables into
-   |                    IndexedDB so an offline load still has a deck to study.
-   |  fetch, same origin — no CORS, one thing to deploy
-   v
-api.py                  eight endpoints, routing only
-   |
-service.py              the rules: what a review does, how a merge resolves
-   |
-   +-- clock, scheduler, normalizer, checker, queue, models
-   |       the pure layer. No framework, no driver, no I/O. A subprocess test
-   |       fails the build if any of them grows an import.
-   |
-tables.py / database.py SQLModel tables, engine, per-request session
-   |
-   v
-Supabase Postgres       DATABASE_URL; alembic owns the schema
-```
+Adding accounts is more than an afternoon, and the reason is structural rather
+than fiddly. `CardState`'s primary key *is* `card_id`, so two accounts studying
+John 3:16 collide; `AppState` is a single pinned row, so one visitor pressing
++30d moves everyone's date. Both need re-keying, and Alembic's autogenerate
+handles added columns well and primary-key changes badly. There is also a
+decision hiding in it that the plan never mentioned: if every endpoint demands a
+token, the public demo stops working, so anonymous sessions or a signed-out
+local mode has to come first.
 
-**The pure layer is the point.** `clock`, `scheduler`, `normalizer`, `checker`,
-`queue` and `models` import nothing but the standard library and `regex`. That
-is what let the scheduler be proven against all 8 workbook traces and the
-checker against all 21 answer cases before any database existed, and it is
-enforced rather than hoped for: `tests/test_phase1_guards.py` imports each of
-them in a **subprocess** and fails if SQLAlchemy or FastAPI comes along.
+**Cross-device sync is closer than it looks.** The merge rule is already written
+and tested — last-write-wins on `updated_at`, tombstone-aware, idempotent, with
+21 tests covering it. Once rows have owners and clients authenticate, sync
+largely falls out, because every device talks to the same Postgres.
 
-**One rule about time.** No module outside `clock.py` calls `date.today()`.
-Every "what day is it" goes through a `Clock` carrying a persisted offset, which
-is why time travel works everywhere at once instead of only in the UI. Sync
-timestamps are the deliberate exception — `clock.real_now()` is real UTC, so a
-user who has travelled 60 days forward does not win every merge
-([DECISIONS](docs/DECISIONS.md) D15).
+**True offline-first is the genuinely large piece and is not attempted.** Today
+Dexie is a *read* mirror: offline you can still see your deck, and the app says
+so in a banner, but it will not accept a grade it might lose. Making the client
+a writer means a local write queue, client-generated ids and reconciliation on
+reconnect. That was a scoping decision, not an oversight — the honest version is
+a read-only offline mode that never lies about what it saved.
 
-**Where the data lives.** Online, the server is authoritative and Dexie is a
-mirror hydrated from `GET /api/export`. Offline, the page rebuilds the queue
-from that mirror and says so in a banner; it does not queue grades it might
-lose. Export and import work signed out, always — that is the promise that your
-data is never held hostage ([DECISIONS](docs/DECISIONS.md) D21).
-
-Full diagrams in [docs/FLOWCHART.md](docs/FLOWCHART.md); dependency rationale in
-[docs/TOOLING.md](docs/TOOLING.md); the deployment runbook, including everything
-Phase 5 still needs, in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+The full migration plan, including the RLS policies, is written up in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) §5.4.
 
 ---
 
-## Rule interpretations
+## Shortcomings and hacks
 
-Where `B_Rules` or the supplied data admitted more than one reading, this is the
-reading taken. Each links to the full argument in
-[docs/DECISIONS.md](docs/DECISIONS.md).
+An honest list of what I would flag in review.
 
-| # | Ambiguity | Decision |
-|---|---|---|
-| D6 | Input longer than the card | Surplus is reported as its own two facts (`surplus_count`, `surplus_from`) and never feeds `matched`, `total` or `status`, which are always computed from the **card's** length. Surplus with at least one match is Partial — never Correct. |
-| D8, D13 | Where the review state lives | `Card` and `CardState` are separate tables, because content is seeded once and state changes every review. The tables live in `tables.py`, not `models.py`, so importing them cannot drag SQLAlchemy into the pure logic. |
-| D10 | Traditional Chinese against a simplified card | No script conversion, per `B_Rules`. The two verses happen to share 23 of 30 characters, so the rules give **Partial**, not the workbook's Incorrect. Documented, not tuned away. |
-| D12 | What "exact match" compares | The split **unit lists**, not the normalized strings. They agree for word languages; for `zh` they disagree, and comparing strings made a perfectly recited verse typed with spaces come back "Partial — 30 of 30 matched". |
-| D15 | Which clock stamps `updated_at` | Real UTC, never the travellable clock. Otherwise a time-travelled device wins every sync merge until the real date catches up. |
-| D17 | What "restore from JSON" means | Merge, last-write-wins on `updated_at`, strictly newer only. Restoring an old backup cannot delete newer work, and re-importing the same file is a no-op. |
-| D18 | When a seeded card is first due | Immediately — box 0, due on the **app** date. A null due date satisfies nothing in `build_queue`, so the deck would be present and permanently invisible. |
-| D19 | Logic the browser has to duplicate | The intervals and the unit split, both pinned by tests that parse `web/index.html` and fail when they drift from `scheduler.py` and `queue.py`. |
-| — | Queue sort order | `(due_date, box, reference)` with `reference` as a plain **string** sort — alphabetical, not canonical book order, so Isaiah < John < Leviticus. `B_Rules` says string; a test stops anyone "fixing" it. |
-| — | `hard` interval | 60% of the interval of the box the card is **already in**, floored, minimum 1 day. Box 4 gives 12 days, not 13, and `hard` on box 0 still moves the due date by a day while leaving the box at 0. |
-| D1 | "22 CHECK cases" | The sheet holds **21** data rows. Confirmed against the `.xlsx`, not an export. |
+**The clock is global.** It lives in one row, so time travel is shared by every
+visitor at once. It should be per user, and will have to be as soon as accounts
+exist.
+
+**Two things are reimplemented in the browser.** The Leitner intervals (so a
+grade button can show its date before you press it) and the unit split (so a
+mismatch at position 15 can be highlighted at position 15). Both are duplicated
+logic. They are pinned by tests that *parse `web/index.html` with a regex* and
+compare the JavaScript literals to the Python — which catches drift, but is
+itself the hackiest thing in the repo.
+
+**The client-side split skips the language folding** and relies on an invariant:
+stripping harakat or a nukta never changes how many units there are. That holds
+for all 32 cards and is asserted for each of them, but it is an assumption about
+the data, not a proof about the rules.
+
+**`app.py` puts `src/` on `sys.path`.** A src-layout package is importable only
+when the project itself is installed, and a deployment that installs
+dependencies but not the project would fail with an error that looks like a
+missing third-party package. The three-line workaround is deliberate and
+commented, but it is a workaround.
+
+**The production schema was applied as raw SQL, not by running Alembic against
+it.** The SQL was generated by `alembic upgrade head --sql` and the version
+table was stamped to match, so the result is byte-identical to the migration and
+future migrations run normally — but the usual path would have been to point
+Alembic at the production URL and let it do the work.
+
+**`hard` on boxes 3 and 5 is unverified by fixture.** No supplied trace exercises
+them. They follow the same floored-60% rule as the boxes that are covered, and
+property tests bound the result, but no workbook trace confirms 4 days and 36
+days specifically.
+
+**The CDN failure check is a timer.** If Alpine does not load, `x-cloak` never
+lifts and the page renders blank — a worse failure than a broken layout, because
+nothing looks wrong. There is now a four-second check that reveals an
+explanation and points at `/docs`, but a timeout is a crude substitute for a
+proper load-error event.
+
+**The API is unauthenticated and unthrottled**, `GET /api/cards` is unpaginated,
+and `/api/health` returns a redacted database error message to anyone who asks.
+All are acceptable at 32 cards and one user; none would survive contact with the
+public.
+
+**Row-level security is enabled with no policies.** That closes the Supabase
+Data API completely rather than selectively — correct while there is nothing to
+scope by, but a blunt instrument standing in for real policies.
+
+---
+
+## Time spent
+
+About **6 hours**, spread over 3 days.
+
+Roughly half of that went into the logic and its tests — the normalizer and the
+scheduler are where correctness is judged, and both were finished before any
+framework existed. The rest went to the API, the frontend, and deployment, with
+deployment taking longer than expected: the failures arrived one at a time
+(entrypoint, then driver, then network, then an empty database), each hidden
+behind a generic 500 until the health endpoint was taught to report the cause.
 
 ---
 
 ## Text sources
 
-All four translations are public domain, supplied complete in `B_Cards` — nothing
-is fetched at runtime.
+All four translations are public domain, supplied complete in `B_Cards` —
+nothing is fetched at runtime.
 
 | Lang | Translation | Status |
 |---|---|---|
@@ -310,3 +304,32 @@ is fetched at runtime.
 | zh | Chinese Union Version (1919), simplified script | Public domain |
 | ar | Smith & Van Dyck (1865), fully vocalized | Public domain (CC0) |
 | hi | Hindi Old Version | Public domain |
+
+---
+
+## Repository map
+
+```
+src/scripture_memory_trainer/
+  clock.py         injectable Clock: real date + a persisted day offset
+  scheduler.py     Leitner box arithmetic
+  normalizer.py    Unicode-aware folding for comparison
+  checker.py       positional answer checking -> Verdict
+  queue.py         due filter, three-key sort, cap of 20
+  models.py        the Card dataclass the pure logic speaks
+  tables.py        SQLModel tables + the columns sync will need
+  database.py      engine, session, DATABASE_URL handling
+  seed.py          idempotent import of seed/cards.json
+  service.py       the rules the API applies
+  schemas.py       request/response models — what /docs renders
+  api.py           eight endpoints; also serves the frontend
+web/index.html     the entire frontend
+app.py             deployment entrypoint
+seed/cards.json    32 verses, extracted from the workbook
+tests/             421 tests, including a Playwright smoke test in tests/smoke/
+docs/DECISIONS.md  every interpretation, with the argument for it
+docs/DEPLOYMENT.md the deployment runbook and the plan for accounts and sync
+docs/FLOWCHART.md  diagrams, lifecycle down to the check pipeline
+docs/TOOLING.md    why each dependency was chosen
+tools/             regenerates the fixtures from the workbook
+```
