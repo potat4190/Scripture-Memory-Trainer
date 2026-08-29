@@ -77,7 +77,7 @@ flowchart TD
 
 ```mermaid
 flowchart TB
-    subgraph BROWSER["Browser — the source of truth"]
+    subgraph BROWSER["Browser — offline mirror"]
         HTML["index.html<br/>Alpine.js components"]
         DEXIE[("IndexedDB via Dexie<br/>cards, reviews, state")]
         EXPORT["JSON export / import<br/>always available, never paywalled"]
@@ -86,16 +86,18 @@ flowchart TB
     end
 
     subgraph VERCEL["Vercel — free Hobby tier"]
-        STATIC["Static assets<br/>HTML, CSS, JS, fonts"]
+        STATIC["web/index.html<br/>mounted by the app at / — same origin"]
         subgraph FASTAPI["FastAPI on Python runtime"]
-            ROUTES["Routes<br/>/api/cards /api/queue<br/>/api/review /api/clock"]
+            ROUTES["api.py — 8 routes<br/>cards, queue, check, review<br/>clock, export, import, health"]
+            SERVICE["service.py<br/>rules: review, merge, clock"]
             SCHED["scheduler.py<br/>Leitner box arithmetic"]
             NORM["normalizer.py<br/>regex \\p{P} + unicodedata"]
             CHECK["checker.py<br/>positional comparison"]
             CLOCK["clock.py<br/>offset-aware today"]
-            ROUTES --> SCHED
-            ROUTES --> NORM --> CHECK
-            ROUTES --> CLOCK
+            ROUTES --> SERVICE
+            SERVICE --> SCHED
+            SERVICE --> NORM --> CHECK
+            SERVICE --> CLOCK
         end
     end
 
@@ -443,7 +445,9 @@ flowchart TD
     style JSON fill:#e8f0fe,stroke:#4285f4,stroke-width:2px
 ```
 
-This is the direct answer to the failure mode catalogued in `leitnerboxappanalysis.md`: every data-loss report there traces to an app trusting the server over the device. Local is the source of truth; the server is a replica.
+This is the direct answer to the failure mode catalogued in the app analysis: every data-loss report there traces to an app trusting the server over the device.
+
+**What was actually built (Phase 4) differs from this diagram, and the difference is deliberate.** Online, the server is authoritative and Dexie is a mirror hydrated from `GET /api/export`; offline, the page rebuilds the queue from that mirror and says so in a banner, but does **not** accept grades it might lose. The guarantee that survived intact is the one that matters: local data is never destroyed by a sync failure or a sign-out, and export works signed out. Full reasoning in `DECISIONS.md` D21. A true local-first write path arrives with Phase 5.
 
 ---
 

@@ -187,8 +187,8 @@ parts of the page a backend change could break.
 
 - [x] `.github/workflows/ci.yml` — ruff, mypy, pytest on every push
 - [x] `.github/workflows/keepalive.yml` — cron every 3 days, trivial Supabase query
-- [ ] Connect the repo to Vercel, set env vars (Supabase URL and anon key)
-- [ ] Verify the production deploy and the auto-generated `/docs`
+- [x] Connect the repo to Vercel, set env vars (Supabase URL and anon key)
+- [x] Verify the production deploy and the auto-generated `/docs`
 - [x] One Playwright smoke test: load → advance clock 3 days → queue changes
 - [x] Custom `vercel.json` `excludeFiles` to keep `tests/` and `seed/` out of the function bundle
 
@@ -200,13 +200,20 @@ variables, and verifying the production deploy. See `docs/DEPLOYMENT.md` 6.3.
 
 ### README — this is graded
 
-- [ ] What it is, and the live URL
-- [ ] How to run locally in three commands
-- [ ] **Which CHECK cases you fail, and why** — the two Matthew 28:19 cases, with your computed counts shown
-- [ ] Every rule interpretation you made where B_Rules was ambiguous, lifted from `DECISIONS.md`
-- [ ] How to demonstrate time travel — the single most impressive thing to show a reviewer in ten seconds
-- [ ] Architecture in one paragraph plus the diagrams from `FLOWCHART.md`
-- [ ] Text sources and public-domain status, per B_Rules
+- [x] What it is, and the live URL
+- [x] How to run locally in three commands
+- [x] **Which CHECK cases you fail, and why** — the two Matthew 28:19 cases, with your computed counts shown
+- [x] Every rule interpretation you made where B_Rules was ambiguous, lifted from `DECISIONS.md`
+- [x] How to demonstrate time travel — the single most impressive thing to show a reviewer in ten seconds
+- [x] Architecture in one paragraph plus the diagrams from `FLOWCHART.md`
+- [x] Text sources and public-domain status, per B_Rules
+
+**Where this stands:** deployed and verified in a real browser, anonymously, at
+<https://scripture-memory-trainer-lemon.vercel.app> — page loads, queue shows
+"32 due, 20 in this session", a wrong answer returns "11 of 33 words matched ·
+wrong at 2 · 21 missing from 13" with the diff marked inline, `easy` moves the
+card box 0 → 2, and +1d ×3 moves the app date to 2026-09-01 while the real date
+stays 2026-08-29. Production was reset to a clean deck afterwards.
 
 **Exit criterion:** a stranger can open the URL, study a card in Arabic, advance the clock 60 days, and see the schedule respond — without reading anything first.
 
